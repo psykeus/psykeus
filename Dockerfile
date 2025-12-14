@@ -15,13 +15,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     librsvg2-dev \
     libpixman-1-dev \
     pkg-config \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies with verbose output for debugging
+RUN npm ci --loglevel verbose 2>&1 || (echo "npm ci failed" && exit 1)
 
 # Copy source code
 COPY . .
@@ -51,6 +52,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgif7 \
     librsvg2-2 \
     libpixman-1-0 \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Set production environment

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="15" fill="#B45309"/>
+
+  <!-- CNC Layer icons - representing layered design files -->
+  <path d="M6 10L16 5L26 10L16 15L6 10Z" fill="#FEF3C7" stroke="#FCD34D" stroke-width="0.5"/>
+  <path d="M6 16L16 21L26 16" stroke="#FEF3C7" stroke-width="2" stroke-linecap="round"/>
+  <path d="M6 22L16 27L26 22" stroke="#FEF3C7" stroke-width="2" stroke-linecap="round"/>
+</svg>

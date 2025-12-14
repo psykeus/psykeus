@@ -1,0 +1,356 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-12-07T21:13:20.734Z",
+  "models": {
+    "legacy2D": {
+      "name": "Legacy 2D Analysis",
+      "model": "gpt-5.1",
+      "maxTokens": 800,
+      "temperature": 1,
+      "detail": "high"
+    },
+    "model3D": {
+      "name": "3D Model Analysis",
+      "model": "gpt-5.1",
+      "maxTokens": 1200,
+      "temperature": 1,
+      "detail": "high"
+    }
+  },
+  "tagVocabulary": {
+    "objectTypes": [
+      "figurine",
+      "miniature",
+      "statue",
+      "bust",
+      "holder",
+      "stand",
+      "mount",
+      "bracket",
+      "clip",
+      "hook",
+      "organizer",
+      "container",
+      "box",
+      "case",
+      "enclosure",
+      "cover",
+      "cap",
+      "knob",
+      "handle",
+      "wheel",
+      "gear",
+      "tool",
+      "jig",
+      "fixture",
+      "adapter",
+      "connector",
+      "spacer",
+      "washer"
+    ],
+    "functionalFeatures": [
+      "threaded",
+      "snap-fit",
+      "hinged",
+      "interlocking",
+      "stackable",
+      "magnetic",
+      "adjustable",
+      "modular",
+      "hollow",
+      "solid",
+      "vented",
+      "reinforced",
+      "waterproof",
+      "flexible",
+      "rigid"
+    ],
+    "aestheticStyles": [
+      "low-poly",
+      "high-detail",
+      "smooth",
+      "textured",
+      "organic",
+      "geometric",
+      "mechanical",
+      "artistic",
+      "minimal",
+      "ornate",
+      "realistic",
+      "stylized",
+      "cartoon",
+      "abstract",
+      "nature-inspired",
+      "industrial"
+    ],
+    "useCases": [
+      "desk-organizer",
+      "phone-stand",
+      "cable-management",
+      "wall-mount",
+      "3d-printing",
+      "cnc",
+      "prototype",
+      "replacement-part",
+      "custom-fit",
+      "home-decor",
+      "gaming",
+      "cosplay",
+      "educational"
+    ],
+    "sizeCategories": [
+      "miniature",
+      "small",
+      "medium",
+      "large",
+      "oversized"
+    ],
+    "printConsiderations": [
+      "no-supports",
+      "easy-print",
+      "multi-part",
+      "single-piece",
+      "requires-supports",
+      "detailed-print",
+      "quick-print"
+    ],
+    "animals": [
+      "bear",
+      "wolf",
+      "deer",
+      "elk",
+      "moose",
+      "eagle",
+      "owl",
+      "hawk",
+      "fish",
+      "salmon",
+      "trout",
+      "bass",
+      "shark",
+      "whale",
+      "dolphin",
+      "horse",
+      "dog",
+      "cat",
+      "lion",
+      "tiger",
+      "elephant",
+      "giraffe",
+      "fox",
+      "rabbit",
+      "squirrel",
+      "bird",
+      "duck",
+      "goose",
+      "turkey",
+      "rooster",
+      "butterfly",
+      "bee",
+      "dragonfly",
+      "turtle",
+      "frog",
+      "snake",
+      "dragon",
+      "unicorn",
+      "phoenix"
+    ],
+    "natureElements": [
+      "tree",
+      "forest",
+      "mountain",
+      "river",
+      "ocean",
+      "lake",
+      "waterfall",
+      "sunset",
+      "sunrise",
+      "moon",
+      "sun",
+      "stars",
+      "clouds",
+      "flower",
+      "rose",
+      "sunflower",
+      "leaf",
+      "branch",
+      "pine",
+      "oak",
+      "maple",
+      "palm",
+      "cactus",
+      "mushroom",
+      "landscape",
+      "wildlife",
+      "hunting",
+      "fishing"
+    ],
+    "characters": [
+      "human",
+      "face",
+      "portrait",
+      "skull",
+      "skeleton",
+      "angel",
+      "fairy",
+      "mermaid",
+      "gnome",
+      "elf",
+      "wizard",
+      "warrior",
+      "knight",
+      "samurai",
+      "viking",
+      "cowboy",
+      "santa",
+      "snowman"
+    ],
+    "themes": [
+      "wildlife-scene",
+      "hunting-scene",
+      "fishing-scene",
+      "nature-scene",
+      "family",
+      "holiday",
+      "christmas",
+      "halloween",
+      "easter",
+      "patriotic",
+      "western",
+      "nautical",
+      "rustic",
+      "farmhouse",
+      "cabin",
+      "lodge"
+    ]
+  },
+  "validValues": {
+    "projectTypes": [
+      "figurine",
+      "holder",
+      "mount",
+      "enclosure",
+      "bracket",
+      "clip",
+      "tool",
+      "container",
+      "art",
+      "ornament",
+      "mechanical",
+      "puzzle",
+      "jig",
+      "model",
+      "coaster",
+      "sign",
+      "box",
+      "other"
+    ],
+    "difficulties": [
+      "easy",
+      "medium",
+      "hard"
+    ]
+  },
+  "prompts": {
+    "model3DSystem": {
+      "id": "model3DSystem",
+      "name": "3D Model System Prompt",
+      "description": "System instructions for analyzing 3D models",
+      "enabled": true,
+      "systemPrompt": "You are an expert Laser Cutting/Engraving and CNC machining analyst. You analyze 3D models and provide detailed, accurate metadata.\n\nYou will receive:\n1. A multi-view image showing the model from 6 angles (Front, Right, Back, Top, Bottom, Isometric)\n2. Computed geometry data including exact dimensions, volume, and complexity\n\nYour task is to analyze BOTH the visual appearance AND the geometry data to provide comprehensive metadata.\n\n## CRITICAL: Subject/Content Identification\nCARFULLY examine what is DEPICTED in the design. If it shows animals, people, characters, nature scenes, or any recognizable subjects, you MUST identify them specifically. For example:\n- A relief with bears catching fish = subjects: [\"bear\", \"salmon\", \"fishing-scene\"]\n- A deer in a forest scene = subjects: [\"deer\", \"forest\", \"wildlife-scene\"]\n- An eagle sculpture = subjects: [\"eagle\"]\n\nThe title should include the main subjects (e.g., \"Bears Catching Salmon Relief\" not \"Wildlife Relief\").\n\n## Response Format\nReturn ONLY valid JSON with these fields:\n\n{\n  \"title\": \"Descriptive title that includes the main SUBJECTS depicted (e.g., 'Bear Family Fishing Scene Relief')\",\n  \"description\": \"2-3 sentence description explaining what is depicted, what subjects/animals/characters are shown, its purpose, and notable features\",\n  \"subjects\": [\"List ALL animals, characters, or subjects depicted - e.g., bear, salmon, eagle, deer, wolf, tree, mountain\"],\n  \"project_type\": \"One of: {{projectTypes}}\",\n  \"difficulty\": \"One of: {{difficulties}} (based on print complexity, supports needed, assembly)\",\n  \"categories\": [\"Functional\", \"Decorative\", \"Mechanical\", \"Artistic\", etc.],\n  \"style\": \"Design style: organic, geometric, mechanical, minimal, detailed, artistic, functional\",\n  \"tags\": [\"max 10 specific tags from controlled vocabulary - include subject tags!\"],\n  \"print_time_estimate\": \"Estimated print time range, e.g., '2-4 hours' or '30-60 minutes'\",\n  \"supports_required\": true or false,\n  \"recommended_layer_height\": \"e.g., '0.2mm' or '0.1mm for detail'\",\n  \"functional_features\": [\"List specific features: mounting holes, snap fits, threads, hinges, etc.\"]\n}\n\n## Tag Guidelines (IMPORTANT)\nUse tags from these categories:\n\n**Animals (if depicted)**: {{animals}}\n\n**Nature Elements**: {{natureElements}}\n\n**Characters**: {{characters}}\n\n**Themes**: {{themes}}\n\n**Object Types**: {{objectTypes}}\n\n**Functional Features**: {{functionalFeatures}}\n\n**Aesthetic Styles**: {{aestheticStyles}}\n\n**Use Cases**: {{useCases}}\n\n**Size Categories**: {{sizeCategories}}\n\n**Print Considerations**: {{printConsiderations}}\n\nINCLUDE subject tags (animals, characters, nature) when they are depicted in the design!\n\n## Analysis Tips\n- FIRST identify what is DEPICTED (animals, people, objects, scenes)\n- Look at ALL 6 views to understand the complete 3D shape\n- For relief/plaque designs, focus on the front view for subject identification\n- Consider overhangs and bridges when assessing difficulty\n- Note mounting holes, clips, slots, or functional features\n- Consider print orientation and its impact on supports\n- Use volume/complexity to estimate print time",
+      "userPromptTemplate": "Analyze this 3D model for metadata extraction.\n\n## Filename\n{{filename}}\n\n## Computed Geometry (ACCURATE DATA - use for dimensions)\n- **Exact Dimensions**: {{dimensions}}\n- **Volume**: {{volumeEstimate}}\n- **Surface Area**: {{surfaceArea}}\n- **Complexity**: {{complexity}}\n- **Detected Units**: {{detectedUnit}}\n- **Aspect Ratio**: {{aspectRatio}}\n- **Material Estimate**: {{materialEstimate}}\n\n## Image Description\nThe image shows a 3x2 grid of 6 views:\n- Row 1: Front, Right, Back views\n- Row 2: Top, Bottom, Isometric views\n\nAnalyze ALL views to understand the complete 3D shape. Consider functional features like mounting holes, clips, slots, threads, or decorative elements.\n\nReturn ONLY valid JSON with your analysis."
+    },
+    "model3DUser": {
+      "id": "model3DUser",
+      "name": "3D Model User Prompt (DEPRECATED)",
+      "description": "DEPRECATED - User prompt now embedded in model3DSystem.userPromptTemplate. Kept for backwards compatibility.",
+      "enabled": false,
+      "systemPrompt": "",
+      "userPromptTemplate": ""
+    },
+    "legacy2DSystem": {
+      "id": "legacy2DSystem",
+      "name": "2D Design System Prompt",
+      "description": "System instructions for analyzing 2D designs (SVG, DXF, etc.)",
+      "enabled": true,
+      "systemPrompt": "You are analyzing CNC/laser cutting design files and 3D model files (STL).\nExtract metadata and return valid JSON with these fields:\n- title: A descriptive title (without file extension)\n- description: 2-3 sentence description of the design\n- project_type: One of: {{projectTypes}}\n- difficulty: One of: {{difficulties}}\n- categories: Array of categories\n- style: Design style (mandala, geometric, floral, minimal, detailed, celtic, tribal, mechanical, organic, functional, decorative, etc.)\n- tags: Array of descriptive tags (max 10)\n- approx_dimensions: Estimated dimensions if visible (e.g., \"4 inch diameter\" or \"100mm x 50mm x 30mm\")\n\nFor STL/3D models, the image shows a 3x2 grid of 6 different views of the model:\n- Row 1: Front, Right, Back views\n- Row 2: Top, Bottom, Isometric views\nAnalyze ALL views to understand the complete 3D shape. Consider what the 3D printed or CNC machined object would be used for. Look for functional features like mounting holes, clips, slots, or decorative elements.\n\nReturn ONLY valid JSON, no markdown or explanation.",
+      "userPromptTemplate": "Analyze this {{fileTypeDescription}}. Filename: {{filename}}"
+    },
+    "legacy2DUser": {
+      "id": "legacy2DUser",
+      "name": "2D Design User Prompt (DEPRECATED)",
+      "description": "DEPRECATED - User prompt now embedded in legacy2DSystem.userPromptTemplate. Kept for backwards compatibility.",
+      "enabled": false,
+      "systemPrompt": "",
+      "userPromptTemplate": ""
+    }
+  },
+  "displaySettings": {
+    "showDifficulty": true,
+    "showDimensions": true,
+    "showPrintTime": true,
+    "showSupportsRequired": true,
+    "showLayerHeight": true
+  },
+  "featureFlags": {
+    "favorites": {
+      "enabled": true,
+      "maxPerUser": 1000
+    },
+    "collections": {
+      "enabled": true,
+      "maxPerUser": 20,
+      "maxItemsPerCollection": 100
+    },
+    "relatedDesigns": {
+      "enabled": true,
+      "maxSuggestions": 6,
+      "similarityThreshold": 70
+    },
+    "scheduledPublishing": {
+      "enabled": true
+    },
+    "bulkEdit": {
+      "enabled": true
+    },
+    "auditLog": {
+      "enabled": true,
+      "retentionDays": 90
+    },
+    "analyticsCharts": {
+      "enabled": true
+    },
+    "popularTagsReport": {
+      "enabled": true
+    },
+    "exportReports": {
+      "enabled": true
+    },
+    "backgroundJobs": {
+      "enabled": true
+    },
+    "cdnIntegration": {
+      "enabled": false,
+      "provider": "cloudflare",
+      "cdnUrl": ""
+    },
+    "webhooks": {
+      "enabled": false
+    },
+    "sitemapGeneration": {
+      "enabled": true
+    },
+    "socialCards": {
+      "enabled": true
+    },
+    "advancedSearch": {
+      "enabled": true
+    },
+    "tagAutocomplete": {
+      "enabled": true
+    },
+    "gcodePreview": {
+      "enabled": true
+    }
+  }
+}

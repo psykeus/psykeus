@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" fill="none">
+  <!-- Background -->
+  <rect width="180" height="180" rx="40" fill="#B45309"/>
+
+  <!-- CNC Layer icons - representing layered design files -->
+  <g transform="translate(30, 40)">
+    <path d="M10 30L60 5L110 30L60 55L10 30Z" fill="#FEF3C7" stroke="#FCD34D" stroke-width="1"/>
+    <path d="M10 60L60 85L110 60" stroke="#FEF3C7" stroke-width="6" stroke-linecap="round"/>
+    <path d="M10 90L60 115L110 90" stroke="#FEF3C7" stroke-width="6" stroke-linecap="round"/>
+  </g>
+</svg>

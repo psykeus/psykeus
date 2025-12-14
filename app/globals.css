@@ -1,0 +1,205 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Craft/Industrial Light Theme */
+    --background: 40 33% 97%;          /* Warm cream #FAF8F5 */
+    --foreground: 20 14% 15%;          /* Dark walnut #292524 */
+
+    --card: 0 0% 100%;                 /* Pure white */
+    --card-foreground: 20 14% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14% 15%;
+
+    --primary: 28 80% 37%;             /* Copper #B45309 */
+    --primary-foreground: 40 33% 97%;
+
+    --secondary: 30 7% 82%;            /* Tan/leather #D6D3D1 */
+    --secondary-foreground: 20 14% 15%;
+
+    --muted: 30 6% 90%;                /* Light stone #E7E5E4 */
+    --muted-foreground: 20 6% 40%;
+
+    --accent: 45 93% 40%;              /* Brass #CA8A04 */
+    --accent-foreground: 40 33% 97%;
+
+    --destructive: 0 72% 51%;          /* Rust red #DC2626 */
+    --destructive-foreground: 40 33% 97%;
+
+    --border: 30 7% 82%;
+    --input: 30 7% 82%;
+    --ring: 28 80% 37%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Craft/Industrial Dark Theme */
+    --background: 20 14% 9%;           /* Deep charcoal #1C1917 */
+    --foreground: 60 9% 98%;           /* Light cream #FAFAF9 */
+
+    --card: 20 14% 15%;                /* Dark card #292524 */
+    --card-foreground: 60 9% 98%;
+
+    --popover: 20 14% 15%;
+    --popover-foreground: 60 9% 98%;
+
+    --primary: 32 93% 52%;             /* Warm copper #D97706 */
+    --primary-foreground: 20 14% 9%;
+
+    --secondary: 25 9% 26%;            /* Dark stone #44403C */
+    --secondary-foreground: 60 9% 98%;
+
+    --muted: 24 10% 33%;               /* Medium stone #57534E */
+    --muted-foreground: 25 5% 65%;
+
+    --accent: 48 96% 53%;              /* Gold #EAB308 */
+    --accent-foreground: 20 14% 9%;
+
+    --destructive: 0 91% 71%;          /* Light rust #F87171 */
+    --destructive-foreground: 20 14% 9%;
+
+    --border: 25 9% 26%;
+    --input: 25 9% 26%;
+    --ring: 32 93% 52%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Focus indicators for accessibility */
+@layer base {
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+/* Skip link for accessibility */
+@layer components {
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-md;
+  }
+}
+
+/* Warm shadows for craft aesthetic */
+@layer utilities {
+  .shadow-warm {
+    box-shadow: 0 1px 3px 0 rgba(180, 83, 9, 0.1),
+                0 1px 2px -1px rgba(180, 83, 9, 0.1);
+  }
+
+  .shadow-warm-md {
+    box-shadow: 0 4px 6px -1px rgba(180, 83, 9, 0.1),
+                0 2px 4px -2px rgba(180, 83, 9, 0.1);
+  }
+
+  .shadow-warm-lg {
+    box-shadow: 0 10px 15px -3px rgba(180, 83, 9, 0.1),
+                0 4px 6px -4px rgba(180, 83, 9, 0.1);
+  }
+}
+
+/* Animation utilities */
+@layer utilities {
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.4s ease-out;
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.3s ease-out;
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.2s ease-out;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Skeleton shimmer animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 25%,
+    hsl(var(--muted-foreground) / 0.1) 50%,
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Better touch targets on mobile */
+@media (max-width: 640px) {
+  button, a, [role="button"] {
+    min-height: 44px;
+  }
+}

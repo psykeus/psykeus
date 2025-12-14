@@ -1,6 +1,11 @@
 # Build stage - using Debian for better native module compatibility
 FROM node:22-slim AS builder
 
+# Declare build arguments at the top
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ARG NEXT_PUBLIC_APP_URL
+
 WORKDIR /app
 
 # Install dependencies for native modules (canvas, sharp, etc.)
@@ -21,25 +26,31 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies with verbose output for debugging
-RUN npm ci --loglevel verbose 2>&1 || (echo "npm ci failed" && exit 1)
+# Install dependencies
+RUN npm ci
 
 # Copy source code
 COPY . .
 
 # Set build-time environment variables for Next.js
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
-ARG NEXT_PUBLIC_APP_URL
+# These must be set before npm run build for NEXT_PUBLIC_* to be embedded
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
+# Debug: show env vars (will be visible in build logs)
+RUN echo "Building with NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL"
+
 # Build the application
-RUN npm run build
+RUN npm run build 2>&1
 
 # Production stage
 FROM node:22-slim AS runner
+
+# Declare build arguments for production stage
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ARG NEXT_PUBLIC_APP_URL
 
 WORKDIR /app
 
@@ -57,6 +68,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Set production environment
 ENV NODE_ENV=production
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 
 # Create non-root user
 RUN groupadd --system --gid 1001 nodejs && \

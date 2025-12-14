@@ -9,40 +9,28 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
+      # Supabase - use internal URL if on same Coolify server
+      # Example: http://supabase-kong:8000 or http://localhost:8000
       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-      - SUPABASE_URL=${SUPABASE_URL}
-      - AI_API_KEY=${AI_API_KEY}
+      # Redis - use internal URL if on same Coolify server
+      # Example: redis://redis:6379 or redis://your-redis-container:6379
       - REDIS_URL=${REDIS_URL:-}
+      # Optional
+      - AI_API_KEY=${AI_API_KEY:-}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
       - CRON_SECRET=${CRON_SECRET:-}
     volumes:
       # Mount for persistent data (if needed for local file imports)
       - design-imports:/app/imports
-    depends_on:
-      - redis
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
-    command: redis-server --appendonly yes
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
 volumes:
   design-imports:
-  redis-data:

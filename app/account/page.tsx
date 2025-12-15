@@ -6,6 +6,7 @@ import { getUserWithTier, checkUserDownloadLimit } from "@/lib/services/user-ser
 import { isFavoritesEnabled, isCollectionsEnabled } from "@/lib/feature-flags";
 import { formatDate } from "@/lib/utils";
 import { LogoutButton } from "@/components/LogoutButton";
+import { BillingSection } from "@/components/BillingSection";
 import {
   Heart,
   FolderHeart,
@@ -235,19 +236,19 @@ export default async function AccountPage() {
         </div>
       </div>
 
+      {/* Billing Section - Full Width */}
+      <div className="mb-6">
+        <BillingSection tierName={tier?.name} tierSlug={tier?.slug} />
+      </div>
+
       {/* Main Content Grid */}
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Subscription & Usage Card */}
-        <div className="bg-card border rounded-xl p-6">
-          <h2 className="font-semibold mb-4">Subscription</h2>
+        {/* Download Usage Card */}
+        {hasLimits && (
+          <div className="bg-card border rounded-xl p-6">
+            <h2 className="font-semibold mb-4">Download Usage</h2>
 
-          <p className="text-sm text-muted-foreground mb-4">
-            {tier?.description || "Basic access to free designs"}
-          </p>
-
-          {/* Download Usage */}
-          {hasLimits && (
-            <div className="space-y-3 mb-4">
+            <div className="space-y-3">
               {tier?.daily_download_limit && (
                 <div>
                   <div className="flex justify-between text-sm mb-1.5">
@@ -286,26 +287,17 @@ export default async function AccountPage() {
                 </div>
               )}
             </div>
-          )}
 
-          {/* Tier benefits or upgrade */}
-          {tier?.slug === "free" ? (
-            <Link
-              href="/pricing"
-              className="block w-full text-center py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
-            >
-              Upgrade Plan
-            </Link>
-          ) : (
-            <div className="text-xs text-muted-foreground space-y-1">
+            {/* Tier benefits */}
+            <div className="mt-4 pt-4 border-t text-xs text-muted-foreground space-y-1">
               {tier?.can_access_premium && <p>Access to premium designs</p>}
               {tier?.can_access_exclusive && <p>Access to exclusive designs</p>}
               {tier?.can_create_collections && (
                 <p>Create up to {tier.max_collections || "unlimited"} collections</p>
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Account Details Card */}
         <div className="bg-card border rounded-xl p-6">

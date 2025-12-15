@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 import type { UserWithTier, AccessTier, UserStatus } from "@/lib/types";
+import { CreateUserDialog } from "@/components/admin/CreateUserDialog";
 import {
   Search,
-  Filter,
   ChevronLeft,
   ChevronRight,
   MoreVertical,
@@ -15,10 +16,7 @@ import {
   CheckCircle,
   XCircle,
   LogOut,
-  Edit,
-  Download,
-  Heart,
-  FolderHeart,
+  Eye,
 } from "lucide-react";
 
 interface UsersResponse {
@@ -241,6 +239,11 @@ export function UsersClient() {
 
   return (
     <div className="space-y-6">
+      {/* Header with Create Button */}
+      <div className="flex justify-end">
+        <CreateUserDialog tiers={data?.tiers || []} onUserCreated={fetchUsers} />
+      </div>
+
       {/* Filters */}
       <div className="bg-card border rounded-lg p-4">
         <div className="flex flex-col md:flex-row gap-4">
@@ -385,6 +388,13 @@ export function UsersClient() {
                   </td>
                   <td className="p-4">
                     <div className="flex justify-end gap-2">
+                      <Link
+                        href={`/admin/users/${user.id}`}
+                        className="p-2 hover:bg-secondary rounded-md"
+                        title="View details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Link>
                       <div className="relative group">
                         <button className="p-2 hover:bg-secondary rounded-md">
                           <MoreVertical className="h-4 w-4" />

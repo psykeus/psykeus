@@ -1,8 +1,8 @@
-import { requireSuperAdmin } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth";
 import { UsersClient } from "./UsersClient";
 
 export default async function AdminUsersPage() {
-  await requireSuperAdmin();
+  const user = await requireAdmin();
 
   return (
     <div>

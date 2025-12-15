@@ -39,6 +39,9 @@ export async function Header() {
           <Button variant="ghost" asChild>
             <Link href="/designs">Browse</Link>
           </Button>
+          <Button variant="ghost" asChild>
+            <Link href="/pricing">Pricing</Link>
+          </Button>
 
           {user ? (
             <>

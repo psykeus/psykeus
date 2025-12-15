@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
-import { LayoutDashboard, Layers, Upload, Copy, Users, Bot, PackagePlus, ToggleRight } from "lucide-react";
+import { LayoutDashboard, Layers, Upload, Copy, Users, Bot, PackagePlus, ToggleRight, CreditCard } from "lucide-react";
 
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
@@ -8,8 +8,10 @@ const navItems = [
   { href: "/admin/upload", icon: Upload, label: "Upload" },
   { href: "/admin/import", icon: PackagePlus, label: "Bulk Import" },
   { href: "/admin/duplicates", icon: Copy, label: "Duplicates" },
+  { href: "/admin/users", icon: Users, label: "Users" },
   { href: "/admin/features", icon: ToggleRight, label: "Features" },
   { href: "/admin/ai-settings", icon: Bot, label: "AI Settings" },
+  { href: "/admin/stripe", icon: CreditCard, label: "Stripe" },
 ];
 
 export default async function AdminLayout({
@@ -17,7 +19,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await requireAdmin();
+  await requireAdmin();
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">
@@ -41,15 +43,6 @@ export default async function AdminLayout({
                 {item.label}
               </Link>
             ))}
-            {user.role === "super_admin" && (
-              <Link
-                href="/admin/users"
-                className="flex items-center gap-3 px-4 py-2.5 rounded-md hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-              >
-                <Users className="h-4 w-4" />
-                Users
-              </Link>
-            )}
           </nav>
         </div>
       </aside>

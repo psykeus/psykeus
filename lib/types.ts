@@ -328,3 +328,68 @@ export interface SlugFileIdRouteParams {
 export interface DesignIdFileIdRouteParams {
   params: Promise<{ designId: string; fileId: string }>;
 }
+
+// =============================================================================
+// Stripe Payment Types
+// =============================================================================
+
+export type SubscriptionStatus =
+  | "active"
+  | "past_due"
+  | "canceled"
+  | "incomplete"
+  | "incomplete_expired"
+  | "trialing"
+  | "unpaid"
+  | "paused";
+
+export type SubscriptionType = "yearly" | "lifetime";
+
+export type PaymentType = "subscription" | "one_time";
+
+export interface SubscriptionDetails {
+  status: SubscriptionStatus | null;
+  type: SubscriptionType | null;
+  tier_id: string | null;
+  tier_name: string | null;
+  period_end: string | null;
+  cancel_at_period_end: boolean;
+}
+
+export interface PaymentHistory {
+  id: string;
+  user_id: string;
+  stripe_payment_intent_id: string | null;
+  stripe_invoice_id: string | null;
+  stripe_checkout_session_id: string | null;
+  amount_cents: number;
+  currency: string;
+  payment_type: PaymentType;
+  tier_id: string | null;
+  status: string;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface CheckoutSessionParams {
+  tier_id: string;
+  price_type: "yearly" | "lifetime";
+  success_url: string;
+  cancel_url: string;
+}
+
+export interface StripeWebhookEvent {
+  id: string;
+  stripe_event_id: string;
+  event_type: string;
+  processed: boolean;
+  processing_error: string | null;
+  payload: Record<string, unknown>;
+  created_at: string;
+  processed_at: string | null;
+}
+
+export interface AccessTierWithStripe extends AccessTier {
+  stripe_price_id_yearly: string | null;
+  stripe_price_id_lifetime: string | null;
+}

@@ -3,10 +3,14 @@
  *
  * GET - Get single user details
  * PATCH - Update user (tier, status, role)
+ *
+ * Permission model:
+ * - Admins can: view users, suspend/unsuspend, change tiers, force logout
+ * - Super admins can: all of the above + change roles, ban users, modify other admins
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireSuperAdmin } from "@/lib/auth";
+import { requireAdmin, isSuperAdmin } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/server";
 import {
   getUserWithTier,
@@ -19,7 +23,7 @@ import type { IdRouteParams } from "@/lib/types";
 
 export async function GET(request: NextRequest, { params }: IdRouteParams) {
   try {
-    await requireSuperAdmin();
+    await requireAdmin();
     const { id } = await params;
 
     const user = await getUserWithTier(id);
@@ -71,9 +75,10 @@ export async function GET(request: NextRequest, { params }: IdRouteParams) {
 
 export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
   try {
-    const admin = await requireSuperAdmin();
+    const admin = await requireAdmin();
     const { id } = await params;
     const body = await request.json();
+    const adminIsSuperAdmin = isSuperAdmin(admin);
 
     const supabase = createServiceClient();
 
@@ -88,10 +93,18 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Prevent modifying other super_admins
+    // Prevent modifying other super_admins (only super_admin can modify themselves)
     if (targetUser.role === "super_admin" && targetUser.id !== admin.id) {
       return NextResponse.json(
         { error: "Cannot modify other super admins" },
+        { status: 403 }
+      );
+    }
+
+    // Regular admins cannot modify other admins
+    if (!adminIsSuperAdmin && targetUser.role === "admin" && targetUser.id !== admin.id) {
+      return NextResponse.json(
+        { error: "Only super admins can modify other admins" },
         { status: 403 }
       );
     }
@@ -117,6 +130,13 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
       }
 
       case "ban": {
+        // Only super_admin can ban users
+        if (!adminIsSuperAdmin) {
+          return NextResponse.json(
+            { error: "Only super admins can ban users" },
+            { status: 403 }
+          );
+        }
         const success = await banUser(id, updateData.reason || "No reason provided", admin.id);
         if (!success) {
           return NextResponse.json({ error: "Failed to ban user" }, { status: 500 });
@@ -139,6 +159,14 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
       }
 
       case "update_role": {
+        // Only super_admin can change roles
+        if (!adminIsSuperAdmin) {
+          return NextResponse.json(
+            { error: "Only super admins can change user roles" },
+            { status: 403 }
+          );
+        }
+
         // Only allow changing to/from user and admin roles
         if (!["user", "admin"].includes(updateData.role)) {
           return NextResponse.json(

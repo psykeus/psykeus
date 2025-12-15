@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -138,355 +139,394 @@ export function FeatureFlagsForm() {
         </div>
       )}
 
-      {/* User Features */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Heart className="h-5 w-5 text-primary" />
-            User Features
-          </CardTitle>
-          <CardDescription>
-            Features available to logged-in users
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <FeatureToggleItem
-            icon={Heart}
-            label="Favorites"
-            description="Allow users to save designs to their favorites list"
-            enabled={config.featureFlags.favorites.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("favorites", { enabled })}
-          >
-            <div className="ml-8 mt-2 space-y-2">
-              <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground w-32">Max per user:</Label>
-                <Input
-                  type="number"
-                  className="w-24"
-                  value={config.featureFlags.favorites.maxPerUser}
-                  onChange={(e) => updateFeatureFlag("favorites", { maxPerUser: parseInt(e.target.value) || 100 })}
-                  min={1}
-                  max={1000}
-                />
-              </div>
-            </div>
-          </FeatureToggleItem>
+      <Tabs defaultValue="user" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-6 lg:w-[600px]">
+          <TabsTrigger value="user" className="gap-2">
+            <Heart className="h-4 w-4" />
+            <span className="hidden sm:inline">User</span>
+          </TabsTrigger>
+          <TabsTrigger value="admin" className="gap-2">
+            <Pencil className="h-4 w-4" />
+            <span className="hidden sm:inline">Admin</span>
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Analytics</span>
+          </TabsTrigger>
+          <TabsTrigger value="technical" className="gap-2">
+            <Server className="h-4 w-4" />
+            <span className="hidden sm:inline">Technical</span>
+          </TabsTrigger>
+          <TabsTrigger value="search" className="gap-2">
+            <Search className="h-4 w-4" />
+            <span className="hidden sm:inline">Search</span>
+          </TabsTrigger>
+          <TabsTrigger value="files" className="gap-2">
+            <FileCode className="h-4 w-4" />
+            <span className="hidden sm:inline">Files</span>
+          </TabsTrigger>
+        </TabsList>
 
-          <Separator />
+        {/* User Features Tab */}
+        <TabsContent value="user">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Heart className="h-5 w-5 text-primary" />
+                User Features
+              </CardTitle>
+              <CardDescription>
+                Features available to logged-in users
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <FeatureToggleItem
+                icon={Heart}
+                label="Favorites"
+                description="Allow users to save designs to their favorites list"
+                enabled={config.featureFlags.favorites.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("favorites", { enabled })}
+              >
+                <div className="ml-8 mt-2 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground w-32">Max per user:</Label>
+                    <Input
+                      type="number"
+                      className="w-24"
+                      value={config.featureFlags.favorites.maxPerUser}
+                      onChange={(e) => updateFeatureFlag("favorites", { maxPerUser: parseInt(e.target.value) || 100 })}
+                      min={1}
+                      max={1000}
+                    />
+                  </div>
+                </div>
+              </FeatureToggleItem>
 
-          <FeatureToggleItem
-            icon={FolderHeart}
-            label="Collections"
-            description="Allow users to organize designs into custom collections"
-            enabled={config.featureFlags.collections.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("collections", { enabled })}
-          >
-            <div className="ml-8 mt-2 space-y-2">
-              <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground w-32">Max collections:</Label>
-                <Input
-                  type="number"
-                  className="w-24"
-                  value={config.featureFlags.collections.maxPerUser}
-                  onChange={(e) => updateFeatureFlag("collections", { maxPerUser: parseInt(e.target.value) || 20 })}
-                  min={1}
-                  max={100}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground w-32">Max items each:</Label>
-                <Input
-                  type="number"
-                  className="w-24"
-                  value={config.featureFlags.collections.maxItemsPerCollection}
-                  onChange={(e) => updateFeatureFlag("collections", { maxItemsPerCollection: parseInt(e.target.value) || 100 })}
-                  min={1}
-                  max={500}
-                />
-              </div>
-            </div>
-          </FeatureToggleItem>
+              <Separator />
 
-          <Separator />
+              <FeatureToggleItem
+                icon={FolderHeart}
+                label="Collections"
+                description="Allow users to organize designs into custom collections"
+                enabled={config.featureFlags.collections.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("collections", { enabled })}
+              >
+                <div className="ml-8 mt-2 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground w-32">Max collections:</Label>
+                    <Input
+                      type="number"
+                      className="w-24"
+                      value={config.featureFlags.collections.maxPerUser}
+                      onChange={(e) => updateFeatureFlag("collections", { maxPerUser: parseInt(e.target.value) || 20 })}
+                      min={1}
+                      max={100}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground w-32">Max items each:</Label>
+                    <Input
+                      type="number"
+                      className="w-24"
+                      value={config.featureFlags.collections.maxItemsPerCollection}
+                      onChange={(e) => updateFeatureFlag("collections", { maxItemsPerCollection: parseInt(e.target.value) || 100 })}
+                      min={1}
+                      max={500}
+                    />
+                  </div>
+                </div>
+              </FeatureToggleItem>
 
-          <FeatureToggleItem
-            icon={Sparkles}
-            label="Related Designs"
-            description="Show similar designs based on visual similarity"
-            enabled={config.featureFlags.relatedDesigns.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("relatedDesigns", { enabled })}
-          >
-            <div className="ml-8 mt-2 space-y-2">
-              <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground w-32">Max suggestions:</Label>
-                <Input
-                  type="number"
-                  className="w-24"
-                  value={config.featureFlags.relatedDesigns.maxSuggestions}
-                  onChange={(e) => updateFeatureFlag("relatedDesigns", { maxSuggestions: parseInt(e.target.value) || 6 })}
-                  min={1}
-                  max={20}
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground w-32">Min similarity %:</Label>
-                <Input
-                  type="number"
-                  className="w-24"
-                  value={config.featureFlags.relatedDesigns.similarityThreshold}
-                  onChange={(e) => updateFeatureFlag("relatedDesigns", { similarityThreshold: parseInt(e.target.value) || 70 })}
-                  min={50}
-                  max={99}
-                />
-              </div>
-            </div>
-          </FeatureToggleItem>
-        </CardContent>
-      </Card>
+              <Separator />
 
-      {/* Admin Features */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Pencil className="h-5 w-5 text-primary" />
-            Admin Features
-          </CardTitle>
-          <CardDescription>
-            Features for content management
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <FeatureToggleItem
-            icon={Calendar}
-            label="Scheduled Publishing"
-            description="Schedule designs to be published at a future date/time"
-            enabled={config.featureFlags.scheduledPublishing.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("scheduledPublishing", { enabled })}
-          />
+              <FeatureToggleItem
+                icon={Sparkles}
+                label="Related Designs"
+                description="Show similar designs based on visual similarity"
+                enabled={config.featureFlags.relatedDesigns.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("relatedDesigns", { enabled })}
+              >
+                <div className="ml-8 mt-2 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground w-32">Max suggestions:</Label>
+                    <Input
+                      type="number"
+                      className="w-24"
+                      value={config.featureFlags.relatedDesigns.maxSuggestions}
+                      onChange={(e) => updateFeatureFlag("relatedDesigns", { maxSuggestions: parseInt(e.target.value) || 6 })}
+                      min={1}
+                      max={20}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground w-32">Min similarity %:</Label>
+                    <Input
+                      type="number"
+                      className="w-24"
+                      value={config.featureFlags.relatedDesigns.similarityThreshold}
+                      onChange={(e) => updateFeatureFlag("relatedDesigns", { similarityThreshold: parseInt(e.target.value) || 70 })}
+                      min={50}
+                      max={99}
+                    />
+                  </div>
+                </div>
+              </FeatureToggleItem>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          <Separator />
+        {/* Admin Features Tab */}
+        <TabsContent value="admin">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Pencil className="h-5 w-5 text-primary" />
+                Admin Features
+              </CardTitle>
+              <CardDescription>
+                Features for content management
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <FeatureToggleItem
+                icon={Calendar}
+                label="Scheduled Publishing"
+                description="Schedule designs to be published at a future date/time"
+                enabled={config.featureFlags.scheduledPublishing.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("scheduledPublishing", { enabled })}
+              />
 
-          <FeatureToggleItem
-            icon={Pencil}
-            label="Bulk Edit"
-            description="Edit multiple designs at once (tags, categories, publish status)"
-            enabled={config.featureFlags.bulkEdit.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("bulkEdit", { enabled })}
-          />
+              <Separator />
 
-          <Separator />
+              <FeatureToggleItem
+                icon={Pencil}
+                label="Bulk Edit"
+                description="Edit multiple designs at once (tags, categories, publish status)"
+                enabled={config.featureFlags.bulkEdit.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("bulkEdit", { enabled })}
+              />
 
-          <FeatureToggleItem
-            icon={ScrollText}
-            label="Audit Log"
-            description="Track all admin actions for accountability"
-            enabled={config.featureFlags.auditLog.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("auditLog", { enabled })}
-          >
-            <div className="ml-8 mt-2 space-y-2">
-              <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground w-32">Retention days:</Label>
-                <Input
-                  type="number"
-                  className="w-24"
-                  value={config.featureFlags.auditLog.retentionDays}
-                  onChange={(e) => updateFeatureFlag("auditLog", { retentionDays: parseInt(e.target.value) || 90 })}
-                  min={7}
-                  max={365}
-                />
-              </div>
-            </div>
-          </FeatureToggleItem>
-        </CardContent>
-      </Card>
+              <Separator />
 
-      {/* Analytics Features */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-primary" />
-            Analytics & Reports
-          </CardTitle>
-          <CardDescription>
-            Data visualization and reporting features
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <FeatureToggleItem
-            icon={BarChart3}
-            label="Analytics Charts"
-            description="Show visual charts on the admin dashboard"
-            enabled={config.featureFlags.analyticsCharts.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("analyticsCharts", { enabled })}
-          />
+              <FeatureToggleItem
+                icon={ScrollText}
+                label="Audit Log"
+                description="Track all admin actions for accountability"
+                enabled={config.featureFlags.auditLog.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("auditLog", { enabled })}
+              >
+                <div className="ml-8 mt-2 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground w-32">Retention days:</Label>
+                    <Input
+                      type="number"
+                      className="w-24"
+                      value={config.featureFlags.auditLog.retentionDays}
+                      onChange={(e) => updateFeatureFlag("auditLog", { retentionDays: parseInt(e.target.value) || 90 })}
+                      min={7}
+                      max={365}
+                    />
+                  </div>
+                </div>
+              </FeatureToggleItem>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          <Separator />
+        {/* Analytics Features Tab */}
+        <TabsContent value="analytics">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Analytics & Reports
+              </CardTitle>
+              <CardDescription>
+                Data visualization and reporting features
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <FeatureToggleItem
+                icon={BarChart3}
+                label="Analytics Charts"
+                description="Show visual charts on the admin dashboard"
+                enabled={config.featureFlags.analyticsCharts.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("analyticsCharts", { enabled })}
+              />
 
-          <FeatureToggleItem
-            icon={Tags}
-            label="Popular Tags Report"
-            description="View tag usage statistics and trends"
-            enabled={config.featureFlags.popularTagsReport.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("popularTagsReport", { enabled })}
-          />
+              <Separator />
 
-          <Separator />
+              <FeatureToggleItem
+                icon={Tags}
+                label="Popular Tags Report"
+                description="View tag usage statistics and trends"
+                enabled={config.featureFlags.popularTagsReport.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("popularTagsReport", { enabled })}
+              />
 
-          <FeatureToggleItem
-            icon={Download}
-            label="Export Reports"
-            description="Export statistics and data as CSV/PDF"
-            enabled={config.featureFlags.exportReports.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("exportReports", { enabled })}
-          />
-        </CardContent>
-      </Card>
+              <Separator />
 
-      {/* Technical Features */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Server className="h-5 w-5 text-primary" />
-            Technical Features
-          </CardTitle>
-          <CardDescription>
-            Infrastructure and integration features
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <FeatureToggleItem
-            icon={Server}
-            label="Background Jobs"
-            description="Process heavy tasks (previews, AI) in background queue"
-            enabled={config.featureFlags.backgroundJobs.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("backgroundJobs", { enabled })}
-          />
+              <FeatureToggleItem
+                icon={Download}
+                label="Export Reports"
+                description="Export statistics and data as CSV/PDF"
+                enabled={config.featureFlags.exportReports.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("exportReports", { enabled })}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          <Separator />
+        {/* Technical Features Tab */}
+        <TabsContent value="technical">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Server className="h-5 w-5 text-primary" />
+                Technical Features
+              </CardTitle>
+              <CardDescription>
+                Infrastructure and integration features
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <FeatureToggleItem
+                icon={Server}
+                label="Background Jobs"
+                description="Process heavy tasks (previews, AI) in background queue"
+                enabled={config.featureFlags.backgroundJobs.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("backgroundJobs", { enabled })}
+              />
 
-          <FeatureToggleItem
-            icon={Globe}
-            label="CDN Integration"
-            description="Serve preview images through CDN for faster loading"
-            enabled={config.featureFlags.cdnIntegration.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("cdnIntegration", { enabled })}
-          >
-            <div className="ml-8 mt-2 space-y-2">
-              <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground w-32">Provider:</Label>
-                <Select
-                  value={config.featureFlags.cdnIntegration.provider}
-                  onValueChange={(v) => updateFeatureFlag("cdnIntegration", { provider: v as "cloudflare" | "cloudfront" | "generic" })}
-                >
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cloudflare">Cloudflare</SelectItem>
-                    <SelectItem value="cloudfront">CloudFront</SelectItem>
-                    <SelectItem value="generic">Generic</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <Label className="text-sm text-muted-foreground w-32">CDN URL:</Label>
-                <Input
-                  className="flex-1"
-                  placeholder="https://cdn.example.com"
-                  value={config.featureFlags.cdnIntegration.cdnUrl}
-                  onChange={(e) => updateFeatureFlag("cdnIntegration", { cdnUrl: e.target.value })}
-                />
-              </div>
-            </div>
-          </FeatureToggleItem>
+              <Separator />
 
-          <Separator />
+              <FeatureToggleItem
+                icon={Globe}
+                label="CDN Integration"
+                description="Serve preview images through CDN for faster loading"
+                enabled={config.featureFlags.cdnIntegration.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("cdnIntegration", { enabled })}
+              >
+                <div className="ml-8 mt-2 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground w-32">Provider:</Label>
+                    <Select
+                      value={config.featureFlags.cdnIntegration.provider}
+                      onValueChange={(v) => updateFeatureFlag("cdnIntegration", { provider: v as "cloudflare" | "cloudfront" | "generic" })}
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cloudflare">Cloudflare</SelectItem>
+                        <SelectItem value="cloudfront">CloudFront</SelectItem>
+                        <SelectItem value="generic">Generic</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground w-32">CDN URL:</Label>
+                    <Input
+                      className="flex-1"
+                      placeholder="https://cdn.example.com"
+                      value={config.featureFlags.cdnIntegration.cdnUrl}
+                      onChange={(e) => updateFeatureFlag("cdnIntegration", { cdnUrl: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </FeatureToggleItem>
 
-          <FeatureToggleItem
-            icon={Webhook}
-            label="Webhooks"
-            description="Send notifications to external services on events"
-            enabled={config.featureFlags.webhooks.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("webhooks", { enabled })}
-          />
+              <Separator />
 
-          <Separator />
+              <FeatureToggleItem
+                icon={Webhook}
+                label="Webhooks"
+                description="Send notifications to external services on events"
+                enabled={config.featureFlags.webhooks.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("webhooks", { enabled })}
+              />
 
-          <FeatureToggleItem
-            icon={Map}
-            label="Sitemap Generation"
-            description="Auto-generate sitemap.xml for SEO"
-            enabled={config.featureFlags.sitemapGeneration.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("sitemapGeneration", { enabled })}
-          />
+              <Separator />
 
-          <Separator />
+              <FeatureToggleItem
+                icon={Map}
+                label="Sitemap Generation"
+                description="Auto-generate sitemap.xml for SEO"
+                enabled={config.featureFlags.sitemapGeneration.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("sitemapGeneration", { enabled })}
+              />
 
-          <FeatureToggleItem
-            icon={Share2}
-            label="Social Cards"
-            description="Generate OpenGraph images for social media sharing"
-            enabled={config.featureFlags.socialCards.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("socialCards", { enabled })}
-          />
-        </CardContent>
-      </Card>
+              <Separator />
 
-      {/* Search Features */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5 text-primary" />
-            Search Features
-          </CardTitle>
-          <CardDescription>
-            Enhanced search and discovery
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <FeatureToggleItem
-            icon={Search}
-            label="Advanced Search"
-            description="Boolean operators, dimension ranges, file type filters"
-            enabled={config.featureFlags.advancedSearch.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("advancedSearch", { enabled })}
-          />
+              <FeatureToggleItem
+                icon={Share2}
+                label="Social Cards"
+                description="Generate OpenGraph images for social media sharing"
+                enabled={config.featureFlags.socialCards.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("socialCards", { enabled })}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          <Separator />
+        {/* Search Features Tab */}
+        <TabsContent value="search">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Search className="h-5 w-5 text-primary" />
+                Search Features
+              </CardTitle>
+              <CardDescription>
+                Enhanced search and discovery
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <FeatureToggleItem
+                icon={Search}
+                label="Advanced Search"
+                description="Boolean operators, dimension ranges, file type filters"
+                enabled={config.featureFlags.advancedSearch.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("advancedSearch", { enabled })}
+              />
 
-          <FeatureToggleItem
-            icon={Tags}
-            label="Tag Autocomplete"
-            description="Suggest tags as users type in search"
-            enabled={config.featureFlags.tagAutocomplete.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("tagAutocomplete", { enabled })}
-          />
-        </CardContent>
-      </Card>
+              <Separator />
 
-      {/* File Processing Features */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileCode className="h-5 w-5 text-primary" />
-            File Processing
-          </CardTitle>
-          <CardDescription>
-            Additional file format support
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <FeatureToggleItem
-            icon={FileCode}
-            label="G-code Preview"
-            description="Parse and visualize CNC toolpaths from G-code files"
-            enabled={config.featureFlags.gcodePreview.enabled}
-            onEnabledChange={(enabled) => updateFeatureFlag("gcodePreview", { enabled })}
-          />
-        </CardContent>
-      </Card>
+              <FeatureToggleItem
+                icon={Tags}
+                label="Tag Autocomplete"
+                description="Suggest tags as users type in search"
+                enabled={config.featureFlags.tagAutocomplete.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("tagAutocomplete", { enabled })}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      <Separator />
+        {/* File Processing Features Tab */}
+        <TabsContent value="files">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileCode className="h-5 w-5 text-primary" />
+                File Processing
+              </CardTitle>
+              <CardDescription>
+                Additional file format support
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <FeatureToggleItem
+                icon={FileCode}
+                label="G-code Preview"
+                description="Parse and visualize CNC toolpaths from G-code files"
+                enabled={config.featureFlags.gcodePreview.enabled}
+                onEnabledChange={(enabled) => updateFeatureFlag("gcodePreview", { enabled })}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Save Button */}
       <div className="flex items-center justify-between">

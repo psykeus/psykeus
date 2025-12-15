@@ -44,6 +44,13 @@ export function MobileNav({ isAuthenticated, isAdmin }: Props) {
                 >
                   Browse Designs
                 </Link>
+                <Link
+                  href="/pricing"
+                  className="px-4 py-3 rounded-md hover:bg-secondary transition-colors"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Pricing
+                </Link>
 
                 {isAuthenticated ? (
                   <>

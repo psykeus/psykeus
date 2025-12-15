@@ -2,15 +2,17 @@
  * Admin Users API
  *
  * GET - List all users with filtering and pagination
+ * POST - Create a new user
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireSuperAdmin } from "@/lib/auth";
+import { requireAdmin, isSuperAdmin } from "@/lib/auth";
 import { getUsers, getAccessTiers } from "@/lib/services/user-service";
+import { createServiceClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   try {
-    await requireSuperAdmin();
+    await requireAdmin();
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1", 10);
@@ -41,4 +43,123 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const admin = await requireAdmin();
+    const body = await request.json();
+
+    const { email, name, role, tier_id, password } = body;
+
+    // Validate required fields
+    if (!email) {
+      return NextResponse.json(
+        { error: "Email is required" },
+        { status: 400 }
+      );
+    }
+
+    // Only super_admin can create admin users
+    if (role === "admin" && !isSuperAdmin(admin)) {
+      return NextResponse.json(
+        { error: "Only super admins can create admin users" },
+        { status: 403 }
+      );
+    }
+
+    // Generate password if not provided
+    const userPassword = password || generateSecurePassword();
+
+    const supabase = createServiceClient();
+
+    // Create user in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email,
+      password: userPassword,
+      email_confirm: true,
+      user_metadata: {
+        name: name || undefined,
+      },
+    });
+
+    if (authError || !authData.user) {
+      console.error("[Create User] Auth error:", authError);
+      return NextResponse.json(
+        { error: authError?.message || "Failed to create user in auth" },
+        { status: 500 }
+      );
+    }
+
+    // Get default free tier if no tier specified
+    let finalTierId = tier_id;
+    if (!finalTierId) {
+      const { data: freeTier } = await supabase
+        .from("access_tiers")
+        .select("id")
+        .eq("slug", "free")
+        .single();
+      finalTierId = freeTier?.id;
+    }
+
+    // Create user record in users table
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .insert({
+        id: authData.user.id,
+        email,
+        name: name || null,
+        role: role || "user",
+        tier_id: finalTierId,
+        status: "active",
+      })
+      .select()
+      .single();
+
+    if (userError) {
+      console.error("[Create User] User table error:", userError);
+      // Try to clean up auth user
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      return NextResponse.json(
+        { error: "Failed to create user record" },
+        { status: 500 }
+      );
+    }
+
+    // Log the action
+    await supabase.from("audit_logs").insert({
+      user_id: admin.id,
+      action: "create_user",
+      entity_type: "user",
+      entity_id: userData.id,
+      changes: { email, role: role || "user" },
+    });
+
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: userData.id,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+      },
+      // Only include password in response if it was generated
+      ...(password ? {} : { generatedPassword: userPassword }),
+    });
+  } catch (error) {
+    console.error("[Admin Users API] Create error:", error);
+    return NextResponse.json(
+      { error: "Failed to create user" },
+      { status: 500 }
+    );
+  }
+}
+
+function generateSecurePassword(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%&*";
+  let password = "";
+  for (let i = 0; i < 16; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return password;
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
-import { LayoutDashboard, Layers, Upload, Copy, Users, Bot, PackagePlus, ToggleRight, CreditCard } from "lucide-react";
+import { LayoutDashboard, Layers, Upload, Copy, Users, Bot, PackagePlus, ToggleRight, CreditCard, Webhook } from "lucide-react";
 
 const navItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
@@ -12,6 +12,7 @@ const navItems = [
   { href: "/admin/features", icon: ToggleRight, label: "Features" },
   { href: "/admin/ai-settings", icon: Bot, label: "AI Settings" },
   { href: "/admin/stripe", icon: CreditCard, label: "Stripe" },
+  { href: "/admin/webhooks", icon: Webhook, label: "Webhooks" },
 ];
 
 export default async function AdminLayout({

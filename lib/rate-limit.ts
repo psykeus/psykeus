@@ -198,13 +198,20 @@ class RedisStore implements RateLimitStore {
 }
 
 // =============================================================================
-// Store Instance
+// Store Instance (Lazy-loaded to avoid build-time Redis connection)
 // =============================================================================
 
-// Use Redis if REDIS_URL is configured, otherwise use in-memory
-const store: RateLimitStore = process.env.REDIS_URL
-  ? new RedisStore()
-  : new InMemoryStore();
+let _store: RateLimitStore | null = null;
+
+function getStore(): RateLimitStore {
+  if (!_store) {
+    // Only initialize at runtime, not during build
+    _store = process.env.REDIS_URL
+      ? new RedisStore()
+      : new InMemoryStore();
+  }
+  return _store;
+}
 
 // =============================================================================
 // Rate Limit Functions
@@ -234,6 +241,7 @@ export async function checkRateLimitAsync(
   identifier: string,
   config: RateLimitConfig
 ): Promise<RateLimitResult> {
+  const store = getStore();
   const now = Date.now();
   const entry = await store.get(identifier);
 

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
 import { formatDate } from "@/lib/utils";
 import { ArrowLeft, Download, Calendar, FileType } from "lucide-react";
+import { NoDownloads } from "@/components/ui/empty-states";
 
 export default async function DownloadsPage() {
   const user = await requireUser();
@@ -145,19 +146,7 @@ export default async function DownloadsPage() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-12 bg-card border rounded-xl">
-          <Download className="h-12 w-12 mx-auto mb-4 text-muted-foreground/30" />
-          <h2 className="font-semibold mb-2">No downloads yet</h2>
-          <p className="text-muted-foreground mb-4">
-            Start exploring our design library to find your first download
-          </p>
-          <Link
-            href="/designs"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
-          >
-            Browse Designs
-          </Link>
-        </div>
+        <NoDownloads />
       )}
     </div>
   );

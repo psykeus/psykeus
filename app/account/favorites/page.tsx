@@ -8,8 +8,9 @@ import { formatDate, capitalize } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Heart, ArrowLeft, Search } from "lucide-react";
+import { Heart, ArrowLeft } from "lucide-react";
 import { FavoriteButton } from "@/components/FavoriteButton";
+import { NoFavorites } from "@/components/ui/empty-states";
 
 export default async function FavoritesPage() {
   // Check if feature is enabled
@@ -162,19 +163,7 @@ export default async function FavoritesPage() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-16">
-          <Heart className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
-          <h2 className="text-xl font-semibold mb-2">No favorites yet</h2>
-          <p className="text-muted-foreground mb-6">
-            Start exploring designs and save your favorites by clicking the heart icon.
-          </p>
-          <Button asChild>
-            <Link href="/designs">
-              <Search className="h-4 w-4 mr-2" />
-              Browse Designs
-            </Link>
-          </Button>
-        </div>
+        <NoFavorites />
       )}
     </div>
   );

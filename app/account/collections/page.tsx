@@ -6,8 +6,9 @@ import { isCollectionsEnabled } from "@/lib/feature-flags";
 import { formatDate } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FolderHeart, ArrowLeft, Plus, ChevronRight, Image as ImageIcon } from "lucide-react";
+import { FolderHeart, ArrowLeft, ChevronRight } from "lucide-react";
 import { CreateCollectionButton } from "./CreateCollectionButton";
+import { NoCollections } from "@/components/ui/empty-states";
 
 export default async function CollectionsPage() {
   // Check if feature is enabled
@@ -135,14 +136,7 @@ export default async function CollectionsPage() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-16">
-          <FolderHeart className="h-16 w-16 mx-auto text-muted-foreground/30 mb-4" />
-          <h2 className="text-xl font-semibold mb-2">No collections yet</h2>
-          <p className="text-muted-foreground mb-6">
-            Create collections to organize your favorite designs into groups.
-          </p>
-          <CreateCollectionButton />
-        </div>
+        <NoCollections />
       )}
     </div>
   );

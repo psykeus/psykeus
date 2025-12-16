@@ -4,6 +4,7 @@ import { getUser } from "@/lib/auth";
 import { isCollectionsEnabled, getCollectionsConfig } from "@/lib/feature-flags";
 import { createCollectionSchema, formatZodError } from "@/lib/validations";
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from "@/lib/rate-limit";
+import { featureDisabledResponse, handleDbError } from "@/lib/api/helpers";
 
 /**
  * GET /api/collections
@@ -11,10 +12,7 @@ import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from "@/lib/rate-lim
  */
 export async function GET(request: NextRequest) {
   if (!(await isCollectionsEnabled())) {
-    return NextResponse.json(
-      { error: "Collections feature is disabled" },
-      { status: 403 }
-    );
+    return featureDisabledResponse("Collections");
   }
 
   const user = await getUser();
@@ -57,11 +55,7 @@ export async function GET(request: NextRequest) {
     .order("updated_at", { ascending: false });
 
   if (error) {
-    console.error("Error fetching collections:", error);
-    return NextResponse.json(
-      { error: "Failed to load collections" },
-      { status: 500, headers: rateLimit.headers }
-    );
+    return handleDbError(error, "load collections", rateLimit.headers);
   }
 
   // Transform to include item count
@@ -84,10 +78,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   if (!(await isCollectionsEnabled())) {
-    return NextResponse.json(
-      { error: "Collections feature is disabled" },
-      { status: 403 }
-    );
+    return featureDisabledResponse("Collections");
   }
 
   const user = await getUser();
@@ -159,11 +150,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    console.error("Error creating collection:", error);
-    return NextResponse.json(
-      { error: "Failed to create collection" },
-      { status: 500, headers: rateLimit.headers }
-    );
+    return handleDbError(error, "create collection", rateLimit.headers);
   }
 
   return NextResponse.json(

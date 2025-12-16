@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Eye, Download, FileIcon, Layers, Copy } from "lucide-react";
 import type { DesignFile } from "@/lib/types";
+import {
+  canPreview,
+  canShowThumbnail,
+  getPreviewType,
+  getFileTypeColor,
+  fetchSvgWithCorrectMime,
+  thumbnailCache,
+  cacheThumbnail,
+  hasCachedThumbnail,
+  getCachedThumbnail,
+} from "@/lib/file-preview-utils";
 
 // Dynamically import ModelViewer to avoid SSR issues
 const ModelViewer = dynamic(() => import("@/components/ModelViewer"), {
@@ -27,90 +38,6 @@ interface DesignFileListProps {
   isAuthenticated: boolean;
 }
 
-// File types that can be previewed
-const PREVIEWABLE_IMAGES = ["png", "jpg", "jpeg", "webp", "gif"];
-const PREVIEWABLE_VECTORS = ["svg"];
-const PREVIEWABLE_3D = ["stl", "obj", "gltf", "glb", "3mf"];
-const PREVIEWABLE_PDF = ["pdf"];
-// These formats have generated previews we can show
-const PREVIEWABLE_WITH_GENERATED = ["dxf", "dwg", "ai", "eps"];
-
-function canPreview(fileType: string | null): boolean {
-  if (!fileType) return false;
-  const type = fileType.toLowerCase();
-  return (
-    PREVIEWABLE_IMAGES.includes(type) ||
-    PREVIEWABLE_VECTORS.includes(type) ||
-    PREVIEWABLE_3D.includes(type) ||
-    PREVIEWABLE_PDF.includes(type) ||
-    PREVIEWABLE_WITH_GENERATED.includes(type)
-  );
-}
-
-/**
- * Check if file type can be shown as a thumbnail image.
- * PDFs can be previewed in modal (via iframe) but not as img thumbnails.
- * 3D models require the full viewer, so no thumbnail.
- */
-function canShowThumbnail(fileType: string | null): boolean {
-  if (!fileType) return false;
-  const type = fileType.toLowerCase();
-  return (
-    PREVIEWABLE_IMAGES.includes(type) ||
-    PREVIEWABLE_VECTORS.includes(type) ||
-    PREVIEWABLE_WITH_GENERATED.includes(type)
-  );
-}
-
-function getPreviewType(fileType: string | null): "image" | "svg" | "3d" | "pdf" | "generated" | null {
-  if (!fileType) return null;
-  const type = fileType.toLowerCase();
-  if (PREVIEWABLE_IMAGES.includes(type)) return "image";
-  if (PREVIEWABLE_VECTORS.includes(type)) return "svg";
-  if (PREVIEWABLE_3D.includes(type)) return "3d";
-  if (PREVIEWABLE_PDF.includes(type)) return "pdf";
-  if (PREVIEWABLE_WITH_GENERATED.includes(type)) return "generated";
-  return null;
-}
-
-// Cache for thumbnail URLs to avoid refetching
-const thumbnailCache = new Map<string, string>();
-
-// File type colors for icons
-const FILE_TYPE_COLORS: Record<string, string> = {
-  // Vector formats
-  svg: "text-orange-500 bg-orange-50 dark:bg-orange-950",
-  dxf: "text-blue-500 bg-blue-50 dark:bg-blue-950",
-  dwg: "text-blue-600 bg-blue-50 dark:bg-blue-950",
-  ai: "text-orange-600 bg-orange-50 dark:bg-orange-950",
-  eps: "text-purple-500 bg-purple-50 dark:bg-purple-950",
-  // Image formats
-  png: "text-green-500 bg-green-50 dark:bg-green-950",
-  jpg: "text-green-600 bg-green-50 dark:bg-green-950",
-  jpeg: "text-green-600 bg-green-50 dark:bg-green-950",
-  webp: "text-green-500 bg-green-50 dark:bg-green-950",
-  gif: "text-pink-500 bg-pink-50 dark:bg-pink-950",
-  // 3D formats
-  stl: "text-cyan-500 bg-cyan-50 dark:bg-cyan-950",
-  obj: "text-cyan-600 bg-cyan-50 dark:bg-cyan-950",
-  gltf: "text-cyan-500 bg-cyan-50 dark:bg-cyan-950",
-  glb: "text-cyan-600 bg-cyan-50 dark:bg-cyan-950",
-  "3mf": "text-cyan-500 bg-cyan-50 dark:bg-cyan-950",
-  // Documents
-  pdf: "text-red-500 bg-red-50 dark:bg-red-950",
-  // CAM/CNC formats
-  gcode: "text-yellow-600 bg-yellow-50 dark:bg-yellow-950",
-  nc: "text-yellow-600 bg-yellow-50 dark:bg-yellow-950",
-  tap: "text-yellow-500 bg-yellow-50 dark:bg-yellow-950",
-  // Default
-  default: "text-gray-500 bg-gray-100 dark:bg-gray-800",
-};
-
-function getFileTypeColor(fileType: string | null): string {
-  if (!fileType) return FILE_TYPE_COLORS.default;
-  return FILE_TYPE_COLORS[fileType.toLowerCase()] || FILE_TYPE_COLORS.default;
-}
-
 /**
  * Lazy-loading thumbnail component for file previews
  * Shows generated previews for supported types, styled icons for others
@@ -119,18 +46,18 @@ function FileThumbnail({
   fileId,
   fileType,
   designSlug,
-  canPreview,
+  canPreviewThumbnail,
 }: {
   fileId: string;
   fileType: string | null;
   designSlug: string;
-  canPreview: boolean;
+  canPreviewThumbnail: boolean;
 }) {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(
-    thumbnailCache.get(fileId) || null
+    getCachedThumbnail(fileId)
   );
   const [isLoading, setIsLoading] = useState(
-    canPreview && !thumbnailCache.has(fileId)
+    canPreviewThumbnail && !hasCachedThumbnail(fileId)
   );
   const [hasError, setHasError] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -138,7 +65,7 @@ function FileThumbnail({
 
   // Lazy load thumbnail when visible (only for previewable files)
   useEffect(() => {
-    if (!canPreview || hasStartedLoading.current || thumbnailCache.has(fileId)) {
+    if (!canPreviewThumbnail || hasStartedLoading.current || hasCachedThumbnail(fileId)) {
       return;
     }
 
@@ -150,7 +77,7 @@ function FileThumbnail({
           observer.disconnect();
         }
       },
-      { rootMargin: "100px" } // Start loading 100px before visible
+      { rootMargin: "100px" }
     );
 
     if (containerRef.current) {
@@ -158,7 +85,7 @@ function FileThumbnail({
     }
 
     return () => observer.disconnect();
-  }, [fileId, canPreview, designSlug]);
+  }, [fileId, canPreviewThumbnail, designSlug]);
 
   const loadThumbnail = async () => {
     try {
@@ -173,19 +100,10 @@ function FileThumbnail({
       // For SVG files, create blob URL with correct MIME type
       const type = fileType?.toLowerCase() || "";
       if (type === "svg") {
-        try {
-          const svgResponse = await fetch(data.url);
-          if (svgResponse.ok) {
-            const svgBlob = await svgResponse.blob();
-            const correctedBlob = new Blob([svgBlob], { type: "image/svg+xml" });
-            url = URL.createObjectURL(correctedBlob);
-          }
-        } catch {
-          // Use original URL as fallback
-        }
+        url = await fetchSvgWithCorrectMime(data.url);
       }
 
-      thumbnailCache.set(fileId, url);
+      cacheThumbnail(fileId, url);
       setThumbnailUrl(url);
     } catch {
       setHasError(true);
@@ -198,7 +116,7 @@ function FileThumbnail({
   const typeLabel = fileType?.toUpperCase() || "FILE";
 
   // For non-previewable files or on error, show styled file type icon
-  if (!canPreview || hasError) {
+  if (!canPreviewThumbnail || hasError) {
     return (
       <div
         className={`w-12 h-12 rounded flex flex-col items-center justify-center shrink-0 ${colorClass}`}
@@ -273,22 +191,10 @@ export function DesignFileList({
       const data = await response.json();
       const fileType = file.file_type?.toLowerCase() || "";
 
-      // For SVG files, fetch the content and create a blob URL with correct MIME type
-      // This fixes issues where storage returns application/octet-stream
+      // For SVG files, fetch with correct MIME type
       if (fileType === "svg") {
-        try {
-          const svgResponse = await fetch(data.url);
-          if (svgResponse.ok) {
-            const svgBlob = await svgResponse.blob();
-            const correctedBlob = new Blob([svgBlob], { type: "image/svg+xml" });
-            const blobUrl = URL.createObjectURL(correctedBlob);
-            setPreviewUrl(blobUrl);
-          } else {
-            setPreviewUrl(data.url); // Fallback to original URL
-          }
-        } catch {
-          setPreviewUrl(data.url); // Fallback to original URL on error
-        }
+        const correctedUrl = await fetchSvgWithCorrectMime(data.url);
+        setPreviewUrl(correctedUrl);
       } else {
         setPreviewUrl(data.url);
       }
@@ -653,7 +559,7 @@ function FileRow({
           fileId={file.id}
           fileType={file.file_type}
           designSlug={designSlug}
-          canPreview={canShowThumbnail(file.file_type)}
+          canPreviewThumbnail={canShowThumbnail(file.file_type)}
         />
         <div className="min-w-0">
           <div className="flex items-center gap-2">

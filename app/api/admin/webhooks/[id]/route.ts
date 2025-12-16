@@ -18,6 +18,7 @@ import {
   getWebhookDeliveries,
 } from "@/lib/webhooks";
 import { z } from "zod";
+import { forbiddenResponse, notFoundResponse } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -40,17 +41,17 @@ const updateWebhookSchema = z.object({
  * GET /api/admin/webhooks/[id]
  * Get webhook details and recent deliveries
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   const { id } = await params;
 
   const webhook = await getWebhook(id);
   if (!webhook) {
-    return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
+    return notFoundResponse("Webhook");
   }
 
   const deliveries = await getWebhookDeliveries(id, 25);
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   const enabled = await isWebhooksEnabled();
@@ -106,10 +107,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
  * DELETE /api/admin/webhooks/[id]
  * Delete a webhook
  */
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   const { id } = await params;
@@ -127,10 +128,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
  * POST /api/admin/webhooks/[id]
  * Test webhook by sending a test payload
  */
-export async function POST(request: NextRequest, { params }: RouteParams) {
+export async function POST(_request: NextRequest, { params }: RouteParams) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   const enabled = await isWebhooksEnabled();

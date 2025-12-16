@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,14 +18,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Loader2, Save, RotateCcw, AlertCircle, CheckCircle,
+  Save, RotateCcw, AlertCircle, CheckCircle,
   Heart, FolderHeart, Sparkles, Calendar, Pencil, ScrollText,
   BarChart3, Download, Server, Globe, Webhook,
   Map, Share2, Search, Tags, FileCode
 } from "lucide-react";
+import { PageLoading, Spinner } from "@/components/ui/loading-states";
+import { ErrorCard, InlineError } from "@/components/ui/error-states";
 import type { AIConfig, FeatureFlags } from "@/lib/ai-config";
 
 export function FeatureFlagsForm() {
+  const router = useRouter();
   const [config, setConfig] = useState<AIConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -72,6 +76,8 @@ export function FeatureFlagsForm() {
 
       setSuccess("Feature flags saved successfully");
       setHasChanges(false);
+      // Refresh to update sidebar navigation based on new feature flags
+      router.refresh();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -99,27 +105,16 @@ export function FeatureFlagsForm() {
   };
 
   if (loading) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
+    return <PageLoading message="Loading feature flags..." />;
   }
 
   if (!config) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <AlertCircle className="h-8 w-8 mx-auto text-destructive mb-2" />
-          <p className="text-destructive">{error || "Failed to load configuration"}</p>
-          <Button variant="outline" onClick={loadConfig} className="mt-4">
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Retry
-          </Button>
-        </CardContent>
-      </Card>
+      <ErrorCard
+        title="Failed to load configuration"
+        message={error || "Unable to load feature flags"}
+        onRetry={loadConfig}
+      />
     );
   }
 
@@ -540,7 +535,7 @@ export function FeatureFlagsForm() {
           </Button>
           <Button onClick={saveConfig} disabled={saving || !hasChanges}>
             {saving ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Spinner size="sm" className="mr-2" />
             ) : (
               <Save className="h-4 w-4 mr-2" />
             )}

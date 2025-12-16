@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUser, isAdmin } from "@/lib/auth";
 import { getCdnConfig, isCdnIntegrationEnabled } from "@/lib/feature-flags";
 import { purgeCdnCache, getCdnUrl } from "@/lib/cdn";
+import { forbiddenResponse, handleDbError } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -19,7 +20,7 @@ export const runtime = "nodejs";
 export async function GET() {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   const enabled = await isCdnIntegrationEnabled();
@@ -66,7 +67,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   try {
@@ -121,10 +122,6 @@ export async function POST(request: NextRequest) {
       urlsPurged: urlsToPurge.length,
     });
   } catch (error) {
-    console.error("CDN purge error:", error);
-    return NextResponse.json(
-      { error: "Failed to purge CDN cache" },
-      { status: 500 }
-    );
+    return handleDbError(error, "purge CDN cache");
   }
 }

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getUser, isAdmin } from "@/lib/auth";
+import { forbiddenResponse, handleDbError } from "@/lib/api/helpers";
 
 export async function POST(request: NextRequest) {
   const user = await getUser();
 
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   const supabase = createServiceClient();
@@ -83,11 +84,7 @@ export async function POST(request: NextRequest) {
           .eq("id", designId);
 
         if (deleteError) {
-          console.error("Delete error:", deleteError);
-          return NextResponse.json(
-            { error: "Failed to delete design" },
-            { status: 500 }
-          );
+          return handleDbError(deleteError, "delete design");
         }
 
         return NextResponse.json({ success: true, action: "deleted", designId });
@@ -131,11 +128,7 @@ export async function POST(request: NextRequest) {
           .eq("id", designId2);
 
         if (deleteError) {
-          console.error("Merge delete error:", deleteError);
-          return NextResponse.json(
-            { error: "Failed to complete merge" },
-            { status: 500 }
-          );
+          return handleDbError(deleteError, "complete merge");
         }
 
         return NextResponse.json({
@@ -153,10 +146,6 @@ export async function POST(request: NextRequest) {
         );
     }
   } catch (error) {
-    console.error("Duplicate management error:", error);
-    return NextResponse.json(
-      { error: "Failed to process request" },
-      { status: 500 }
-    );
+    return handleDbError(error, "process duplicate management request");
   }
 }

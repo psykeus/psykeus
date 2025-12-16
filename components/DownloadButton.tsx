@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Loader2, LogIn } from "lucide-react";
+import { Download, LogIn } from "lucide-react";
+import { Spinner } from "@/components/ui/loading-states";
+import { InlineError } from "@/components/ui/error-states";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -53,7 +55,7 @@ export function DownloadButton({ designId, isAuthenticated }: Props) {
       >
         {loading ? (
           <>
-            <Loader2 className="h-5 w-5 animate-spin" />
+            <Spinner size="md" />
             Preparing...
           </>
         ) : isAuthenticated ? (
@@ -69,9 +71,7 @@ export function DownloadButton({ designId, isAuthenticated }: Props) {
         )}
       </Button>
 
-      {error && (
-        <p className="mt-2 text-sm text-destructive">{error}</p>
-      )}
+      {error && <InlineError message={error} className="mt-2" />}
     </div>
   );
 }

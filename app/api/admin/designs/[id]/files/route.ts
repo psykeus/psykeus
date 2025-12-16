@@ -5,6 +5,12 @@ import { isSupportedExtension, getFileExtension } from "@/lib/file-types";
 import type { FileRole, DesignFileWithMeta } from "@/lib/types";
 import crypto from "crypto";
 import { z } from "zod";
+import {
+  validateParams,
+  forbiddenResponse,
+  notFoundResponse,
+  handleDbError,
+} from "@/lib/api/helpers";
 
 const paramsSchema = z.object({
   id: z.string().uuid(),
@@ -21,16 +27,13 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
-  const rawParams = await params;
-  const validation = paramsSchema.safeParse(rawParams);
-  if (!validation.success) {
-    return NextResponse.json({ error: "Invalid design ID" }, { status: 400 });
-  }
+  const paramsResult = await validateParams(params, paramsSchema);
+  if (!paramsResult.success) return paramsResult.response!;
 
-  const { id: designId } = validation.data;
+  const { id: designId } = paramsResult.data!;
   const supabase = createServiceClient();
 
   // Get design to verify it exists
@@ -41,7 +44,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (designError || !design) {
-    return NextResponse.json({ error: "Design not found" }, { status: 404 });
+    return notFoundResponse("Design");
   }
 
   // Get all active files for the design
@@ -54,7 +57,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     .order("created_at", { ascending: true });
 
   if (filesError) {
-    return NextResponse.json({ error: "Failed to fetch files" }, { status: 500 });
+    return handleDbError(filesError, "fetch files");
   }
 
   // Group files by role
@@ -79,16 +82,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
-  const rawParams = await params;
-  const validation = paramsSchema.safeParse(rawParams);
-  if (!validation.success) {
-    return NextResponse.json({ error: "Invalid design ID" }, { status: 400 });
-  }
+  const paramsResult = await validateParams(params, paramsSchema);
+  if (!paramsResult.success) return paramsResult.response!;
 
-  const { id: designId } = validation.data;
+  const { id: designId } = paramsResult.data!;
   const supabase = createServiceClient();
 
   // Verify design exists
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (designError || !design) {
-    return NextResponse.json({ error: "Design not found" }, { status: 404 });
+    return notFoundResponse("Design");
   }
 
   // Parse form data

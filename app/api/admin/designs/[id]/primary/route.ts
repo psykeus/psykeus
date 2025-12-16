@@ -5,6 +5,13 @@ import { z } from "zod";
 import { generatePreview, supportsPreview } from "@/lib/preview-generator";
 import { isImageFile, getFileExtension } from "@/lib/file-types";
 import crypto from "crypto";
+import {
+  validateParams,
+  parseJsonBody,
+  forbiddenResponse,
+  notFoundResponse,
+  handleDbError,
+} from "@/lib/api/helpers";
 
 const paramsSchema = z.object({
   id: z.string().uuid(),
@@ -26,21 +33,20 @@ const bodySchema = z.object({
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
-  const rawParams = await params;
-  const paramsValidation = paramsSchema.safeParse(rawParams);
-  if (!paramsValidation.success) {
-    return NextResponse.json({ error: "Invalid design ID" }, { status: 400 });
-  }
+  const paramsResult = await validateParams(params, paramsSchema);
+  if (!paramsResult.success) return paramsResult.response!;
 
-  const { id: designId } = paramsValidation.data;
+  const { id: designId } = paramsResult.data!;
   const supabase = createServiceClient();
 
   // Parse body
-  const body = await request.json();
-  const bodyValidation = bodySchema.safeParse(body);
+  const bodyResult = await parseJsonBody(request);
+  if (!bodyResult.success) return bodyResult.response!;
+
+  const bodyValidation = bodySchema.safeParse(bodyResult.data);
   if (!bodyValidation.success) {
     return NextResponse.json({ error: "Invalid file ID" }, { status: 400 });
   }
@@ -55,7 +61,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (designError || !design) {
-    return NextResponse.json({ error: "Design not found" }, { status: 404 });
+    return notFoundResponse("Design");
   }
 
   const { regeneratePreview } = bodyValidation.data;
@@ -70,7 +76,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (fileError || !file) {
-    return NextResponse.json({ error: "File not found" }, { status: 404 });
+    return notFoundResponse("File");
   }
 
   // Update the previous primary file to variant (if different)
@@ -181,7 +187,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     .eq("id", designId);
 
   if (updateError) {
-    return NextResponse.json({ error: "Failed to update primary file" }, { status: 500 });
+    return handleDbError(updateError, "update primary file");
   }
 
   return NextResponse.json({

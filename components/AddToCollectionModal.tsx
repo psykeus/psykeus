@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FolderPlus, Plus, Check, Loader2 } from "lucide-react";
+import { FolderPlus, Plus, Check } from "lucide-react";
+import { Spinner } from "@/components/ui/loading-states";
+import { InlineError } from "@/components/ui/error-states";
 import {
   Dialog,
   DialogContent,
@@ -149,15 +151,11 @@ export function AddToCollectionModal({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {error && (
-            <div className="text-sm text-destructive bg-destructive/10 p-2 rounded">
-              {error}
-            </div>
-          )}
+          {error && <InlineError message={error} />}
 
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <Spinner size="md" />
             </div>
           ) : (
             <>
@@ -183,11 +181,7 @@ export function AddToCollectionModal({
                       onClick={createCollection}
                       disabled={!newName.trim() || creating}
                     >
-                      {creating ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        "Create"
-                      )}
+                      {creating ? <Spinner size="sm" /> : "Create"}
                     </Button>
                   </div>
                   <Button
@@ -241,7 +235,7 @@ export function AddToCollectionModal({
                             </p>
                           </div>
                           {isAdding ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Spinner size="sm" />
                           ) : isAdded ? (
                             <Check className="h-4 w-4 text-green-600" />
                           ) : (

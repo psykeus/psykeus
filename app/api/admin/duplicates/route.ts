@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUser, isAdmin } from "@/lib/auth";
 import { hammingDistance, calculateSimilarity } from "@/lib/phash";
+import { forbiddenResponse, handleDbError } from "@/lib/api/helpers";
 
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const user = await getUser();
 
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   const { searchParams } = new URL(request.url);
@@ -35,11 +36,7 @@ export async function GET(request: NextRequest) {
     .eq("is_active", true);
 
   if (error) {
-    console.error("Error fetching files:", error);
-    return NextResponse.json(
-      { error: "Failed to load files" },
-      { status: 500 }
-    );
+    return handleDbError(error, "load files for duplicates");
   }
 
   // Find near-duplicates

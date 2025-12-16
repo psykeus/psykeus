@@ -4,6 +4,7 @@ import { getUser } from "@/lib/auth";
 import { isCollectionsEnabled } from "@/lib/feature-flags";
 import { collectionParamsSchema, updateCollectionSchema, formatZodError } from "@/lib/validations";
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from "@/lib/rate-limit";
+import { featureDisabledResponse, handleDbError } from "@/lib/api/helpers";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -15,10 +16,7 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   if (!(await isCollectionsEnabled())) {
-    return NextResponse.json(
-      { error: "Collections feature is disabled" },
-      { status: 403 }
-    );
+    return featureDisabledResponse("Collections");
   }
 
   // Validate params
@@ -145,10 +143,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (!(await isCollectionsEnabled())) {
-    return NextResponse.json(
-      { error: "Collections feature is disabled" },
-      { status: 403 }
-    );
+    return featureDisabledResponse("Collections");
   }
 
   // Validate params
@@ -234,11 +229,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (error) {
-    console.error("Error updating collection:", error);
-    return NextResponse.json(
-      { error: "Failed to update collection" },
-      { status: 500, headers: rateLimit.headers }
-    );
+    return handleDbError(error, "update collection", rateLimit.headers);
   }
 
   return NextResponse.json(
@@ -253,10 +244,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   if (!(await isCollectionsEnabled())) {
-    return NextResponse.json(
-      { error: "Collections feature is disabled" },
-      { status: 403 }
-    );
+    return featureDisabledResponse("Collections");
   }
 
   // Validate params
@@ -309,11 +297,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const { error } = await supabase.from("collections").delete().eq("id", id);
 
   if (error) {
-    console.error("Error deleting collection:", error);
-    return NextResponse.json(
-      { error: "Failed to delete collection" },
-      { status: 500, headers: rateLimit.headers }
-    );
+    return handleDbError(error, "delete collection", rateLimit.headers);
   }
 
   return NextResponse.json(

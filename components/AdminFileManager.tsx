@@ -29,6 +29,16 @@ import {
 } from "@/components/ui/dialog";
 import { Eye, MoreVertical, FileIcon } from "lucide-react";
 import type { DesignFile, FileRole } from "@/lib/types";
+import {
+  canPreview,
+  canShowThumbnail,
+  getPreviewType,
+  getFileTypeColor,
+  fetchSvgWithCorrectMime,
+  cacheThumbnail,
+  hasCachedThumbnail,
+  getCachedThumbnail,
+} from "@/lib/file-preview-utils";
 
 // Dynamically import ModelViewer to avoid SSR issues
 const ModelViewer = dynamic(() => import("@/components/ModelViewer"), {
@@ -39,77 +49,6 @@ const ModelViewer = dynamic(() => import("@/components/ModelViewer"), {
     </div>
   ),
 });
-
-// File types that can be previewed
-const PREVIEWABLE_IMAGES = ["png", "jpg", "jpeg", "webp", "gif"];
-const PREVIEWABLE_VECTORS = ["svg"];
-const PREVIEWABLE_3D = ["stl", "obj", "gltf", "glb", "3mf"];
-const PREVIEWABLE_PDF = ["pdf"];
-const PREVIEWABLE_WITH_GENERATED = ["dxf", "dwg", "ai", "eps"];
-
-function canPreview(fileType: string | null): boolean {
-  if (!fileType) return false;
-  const type = fileType.toLowerCase();
-  return (
-    PREVIEWABLE_IMAGES.includes(type) ||
-    PREVIEWABLE_VECTORS.includes(type) ||
-    PREVIEWABLE_3D.includes(type) ||
-    PREVIEWABLE_PDF.includes(type) ||
-    PREVIEWABLE_WITH_GENERATED.includes(type)
-  );
-}
-
-/**
- * Check if file type can be shown as a thumbnail image.
- * PDFs and 3D models can't be shown as img thumbnails.
- */
-function canShowThumbnail(fileType: string | null): boolean {
-  if (!fileType) return false;
-  const type = fileType.toLowerCase();
-  return (
-    PREVIEWABLE_IMAGES.includes(type) ||
-    PREVIEWABLE_VECTORS.includes(type) ||
-    PREVIEWABLE_WITH_GENERATED.includes(type)
-  );
-}
-
-// File type colors for icons
-const FILE_TYPE_COLORS: Record<string, string> = {
-  // Vector formats
-  svg: "text-orange-500 bg-orange-50 dark:bg-orange-950",
-  dxf: "text-blue-500 bg-blue-50 dark:bg-blue-950",
-  dwg: "text-blue-600 bg-blue-50 dark:bg-blue-950",
-  ai: "text-orange-600 bg-orange-50 dark:bg-orange-950",
-  eps: "text-purple-500 bg-purple-50 dark:bg-purple-950",
-  // Image formats
-  png: "text-green-500 bg-green-50 dark:bg-green-950",
-  jpg: "text-green-600 bg-green-50 dark:bg-green-950",
-  jpeg: "text-green-600 bg-green-50 dark:bg-green-950",
-  webp: "text-green-500 bg-green-50 dark:bg-green-950",
-  gif: "text-pink-500 bg-pink-50 dark:bg-pink-950",
-  // 3D formats
-  stl: "text-cyan-500 bg-cyan-50 dark:bg-cyan-950",
-  obj: "text-cyan-600 bg-cyan-50 dark:bg-cyan-950",
-  gltf: "text-cyan-500 bg-cyan-50 dark:bg-cyan-950",
-  glb: "text-cyan-600 bg-cyan-50 dark:bg-cyan-950",
-  "3mf": "text-cyan-500 bg-cyan-50 dark:bg-cyan-950",
-  // Documents
-  pdf: "text-red-500 bg-red-50 dark:bg-red-950",
-  // CAM/CNC formats
-  gcode: "text-yellow-600 bg-yellow-50 dark:bg-yellow-950",
-  nc: "text-yellow-600 bg-yellow-50 dark:bg-yellow-950",
-  tap: "text-yellow-500 bg-yellow-50 dark:bg-yellow-950",
-  // Default
-  default: "text-gray-500 bg-gray-100 dark:bg-gray-800",
-};
-
-function getFileTypeColor(fileType: string | null): string {
-  if (!fileType) return FILE_TYPE_COLORS.default;
-  return FILE_TYPE_COLORS[fileType.toLowerCase()] || FILE_TYPE_COLORS.default;
-}
-
-// Cache for thumbnail URLs
-const thumbnailCache = new Map<string, string>();
 
 /**
  * Lazy-loading thumbnail component for file previews in admin
@@ -126,17 +65,17 @@ function FileThumbnail({
   canPreviewThumbnail: boolean;
 }) {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(
-    thumbnailCache.get(fileId) || null
+    getCachedThumbnail(fileId)
   );
   const [isLoading, setIsLoading] = useState(
-    canPreviewThumbnail && !thumbnailCache.has(fileId)
+    canPreviewThumbnail && !hasCachedThumbnail(fileId)
   );
   const [hasError, setHasError] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const hasStartedLoading = useRef(false);
 
   useEffect(() => {
-    if (!canPreviewThumbnail || hasStartedLoading.current || thumbnailCache.has(fileId)) {
+    if (!canPreviewThumbnail || hasStartedLoading.current || hasCachedThumbnail(fileId)) {
       return;
     }
 
@@ -171,19 +110,10 @@ function FileThumbnail({
       // For SVG files, create blob URL with correct MIME type
       const type = fileType?.toLowerCase() || "";
       if (type === "svg") {
-        try {
-          const svgResponse = await fetch(data.url);
-          if (svgResponse.ok) {
-            const svgBlob = await svgResponse.blob();
-            const correctedBlob = new Blob([svgBlob], { type: "image/svg+xml" });
-            url = URL.createObjectURL(correctedBlob);
-          }
-        } catch {
-          // Use original URL as fallback
-        }
+        url = await fetchSvgWithCorrectMime(data.url);
       }
 
-      thumbnailCache.set(fileId, url);
+      cacheThumbnail(fileId, url);
       setThumbnailUrl(url);
     } catch {
       setHasError(true);
@@ -236,19 +166,6 @@ function FileThumbnail({
       )}
     </div>
   );
-}
-
-function getPreviewType(
-  fileType: string | null
-): "image" | "svg" | "3d" | "pdf" | "generated" | null {
-  if (!fileType) return null;
-  const type = fileType.toLowerCase();
-  if (PREVIEWABLE_IMAGES.includes(type)) return "image";
-  if (PREVIEWABLE_VECTORS.includes(type)) return "svg";
-  if (PREVIEWABLE_3D.includes(type)) return "3d";
-  if (PREVIEWABLE_PDF.includes(type)) return "pdf";
-  if (PREVIEWABLE_WITH_GENERATED.includes(type)) return "generated";
-  return null;
 }
 
 interface AdminFileManagerProps {

@@ -2,7 +2,8 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useTransition } from "react";
-import { Search, X, Loader2 } from "lucide-react";
+import { Search, X } from "lucide-react";
+import { Spinner } from "@/components/ui/loading-states";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -123,7 +124,7 @@ export function FilterBar() {
           />
         </div>
         <Button type="submit" disabled={isPending}>
-          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+          {isPending ? <Spinner size="sm" /> : "Search"}
         </Button>
       </form>
 

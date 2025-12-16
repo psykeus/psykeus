@@ -15,6 +15,7 @@ import {
   WEBHOOK_EVENTS,
 } from "@/lib/webhooks";
 import { z } from "zod";
+import { forbiddenResponse } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -35,7 +36,7 @@ const createWebhookSchema = z.object({
 export async function GET() {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   const enabled = await isWebhooksEnabled();
@@ -66,7 +67,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   const enabled = await isWebhooksEnabled();

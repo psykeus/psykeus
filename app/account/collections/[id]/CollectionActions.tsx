@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Edit, Trash2, MoreVertical, Loader2 } from "lucide-react";
+import { Edit, Trash2, MoreVertical } from "lucide-react";
+import { Spinner } from "@/components/ui/loading-states";
+import { InlineError } from "@/components/ui/error-states";
 import {
   Dialog,
   DialogContent,
@@ -142,11 +144,7 @@ export function CollectionActions({
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {error && (
-              <div className="text-sm text-destructive bg-destructive/10 p-2 rounded">
-                {error}
-              </div>
-            )}
+            {error && <InlineError message={error} />}
 
             <div className="space-y-2">
               <Label htmlFor="edit-name">Name</Label>
@@ -195,7 +193,7 @@ export function CollectionActions({
               <Button onClick={handleSave} disabled={saving}>
                 {saving ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Spinner size="sm" className="mr-2" />
                     Saving...
                   </>
                 ) : (
@@ -226,7 +224,7 @@ export function CollectionActions({
             >
               {deleting ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Spinner size="sm" className="mr-2" />
                   Deleting...
                 </>
               ) : (

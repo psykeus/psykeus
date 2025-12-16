@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { SlugRouteParams } from "@/lib/types";
+import { notFoundResponse } from "@/lib/api/helpers";
 
 export async function GET(request: NextRequest, { params }: SlugRouteParams) {
   const { slug } = await params;
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest, { params }: SlugRouteParams) {
     .single();
 
   if (error || !design) {
-    return NextResponse.json({ error: "Design not found" }, { status: 404 });
+    return notFoundResponse("Design");
   }
 
   // Flatten tags - design_tags is an array of { tags: Tag | Tag[] }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUser, isAdmin } from "@/lib/auth";
 import * as jobService from "@/lib/services/import-job-service";
 import * as itemService from "@/lib/services/import-item-service";
+import { forbiddenResponse, notFoundResponse, handleDbError } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,7 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   try {
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const job = await jobService.getImportJobWithProgress(jobId);
 
     if (!job) {
-      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+      return notFoundResponse("Job");
     }
 
     // Get status counts
@@ -42,11 +43,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       ai_stats: aiStats,
     });
   } catch (error) {
-    console.error("Get job error:", error);
-    return NextResponse.json(
-      { error: "Failed to get import job" },
-      { status: 500 }
-    );
+    return handleDbError(error, "get import job");
   }
 }
 
@@ -57,7 +54,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   try {
@@ -65,7 +62,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const job = await jobService.getImportJob(jobId);
 
     if (!job) {
-      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+      return notFoundResponse("Job");
     }
 
     // Don't allow deleting active jobs
@@ -80,10 +77,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Delete job error:", error);
-    return NextResponse.json(
-      { error: "Failed to delete import job" },
-      { status: 500 }
-    );
+    return handleDbError(error, "delete import job");
   }
 }

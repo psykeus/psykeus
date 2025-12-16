@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getUser, isAdmin } from "@/lib/auth";
 import { isSupportedExtension, getFileExtension, generateSlug, ALL_EXTENSIONS } from "@/lib/file-types";
+import { forbiddenResponse, handleDbError } from "@/lib/api/helpers";
 import { validateUploadedFile } from "@/lib/file-validation";
 import { extractAIMetadata, extract3DModelMetadata, type Model3DContext } from "@/lib/ai-metadata";
 import { generatePreview, supportsPreview, generateStlMultiViewPreview, generateObjMultiViewPreview, generateGltfMultiViewPreview, generate3mfMultiViewPreview } from "@/lib/preview-generator";
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
   // Verify admin access
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   // Rate limiting for uploads
@@ -485,10 +486,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Upload error:", error);
-    return NextResponse.json(
-      { error: "Upload failed" },
-      { status: 500 }
-    );
+    return handleDbError(error, "upload files");
   }
 }

@@ -2,6 +2,13 @@
  * Supported file types for the CNC Design Library
  */
 
+/**
+ * Internal helper to normalize filename to lowercase extension
+ */
+function _getExt(filename: string): string {
+  return filename.toLowerCase().slice(filename.lastIndexOf('.'));
+}
+
 // Design file extensions that can be uploaded
 export const DESIGN_EXTENSIONS = [
   '.svg',
@@ -97,7 +104,7 @@ export const FILE_TYPE_INFO = [
  * Check if a file extension is supported (design or image)
  */
 export function isSupportedExtension(filename: string): boolean {
-  const ext = filename.toLowerCase().slice(filename.lastIndexOf('.'));
+  const ext = _getExt(filename);
   return (
     DESIGN_EXTENSIONS.includes(ext as typeof DESIGN_EXTENSIONS[number]) ||
     IMAGE_EXTENSIONS.includes(ext as typeof IMAGE_EXTENSIONS[number])
@@ -108,7 +115,7 @@ export function isSupportedExtension(filename: string): boolean {
  * Check if a file is an image
  */
 export function isImageFile(filename: string): boolean {
-  const ext = filename.toLowerCase().slice(filename.lastIndexOf('.'));
+  const ext = _getExt(filename);
   return IMAGE_EXTENSIONS.includes(ext as typeof IMAGE_EXTENSIONS[number]);
 }
 
@@ -116,7 +123,7 @@ export function isImageFile(filename: string): boolean {
  * Check if a file is a design file (not an image)
  */
 export function isDesignFile(filename: string): boolean {
-  const ext = filename.toLowerCase().slice(filename.lastIndexOf('.'));
+  const ext = _getExt(filename);
   return DESIGN_EXTENSIONS.includes(ext as typeof DESIGN_EXTENSIONS[number]);
 }
 
@@ -124,7 +131,7 @@ export function isDesignFile(filename: string): boolean {
  * Get file extension from filename
  */
 export function getFileExtension(filename: string): string {
-  return filename.toLowerCase().slice(filename.lastIndexOf('.'));
+  return _getExt(filename);
 }
 
 /**
@@ -150,7 +157,7 @@ export const THREE_D_EXTENSIONS = ['.stl', '.obj', '.gltf', '.glb', '.3mf'] as c
  * Check if a file extension is a 3D format
  */
 export function is3DFormat(filename: string): boolean {
-  const ext = filename.toLowerCase().slice(filename.lastIndexOf('.'));
+  const ext = _getExt(filename);
   return THREE_D_EXTENSIONS.includes(ext as typeof THREE_D_EXTENSIONS[number]);
 }
 
@@ -158,7 +165,7 @@ export function is3DFormat(filename: string): boolean {
  * Get the 3D model type from filename
  */
 export function get3DModelType(filename: string): 'stl' | 'obj' | 'gltf' | 'glb' | '3mf' | null {
-  const ext = filename.toLowerCase().slice(filename.lastIndexOf('.'));
+  const ext = _getExt(filename);
   if (ext === '.stl') return 'stl';
   if (ext === '.obj') return 'obj';
   if (ext === '.gltf') return 'gltf';
@@ -176,7 +183,7 @@ export const GCODE_EXTENSIONS = ['.gcode', '.nc', '.ngc', '.tap'] as const;
  * Check if a file is a G-code file
  */
 export function isGcodeFile(filename: string): boolean {
-  const ext = filename.toLowerCase().slice(filename.lastIndexOf('.'));
+  const ext = _getExt(filename);
   return GCODE_EXTENSIONS.includes(ext as typeof GCODE_EXTENSIONS[number]);
 }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUser, isAdmin } from "@/lib/auth";
 import { isAnalyticsChartsEnabled } from "@/lib/feature-flags";
+import { forbiddenResponse, featureDisabledResponse, handleDbError } from "@/lib/api/helpers";
 
 /**
  * GET /api/admin/analytics/downloads
@@ -11,15 +12,12 @@ import { isAnalyticsChartsEnabled } from "@/lib/feature-flags";
 export async function GET(request: NextRequest) {
   // Check if feature is enabled
   if (!(await isAnalyticsChartsEnabled())) {
-    return NextResponse.json(
-      { error: "Analytics charts feature is disabled" },
-      { status: 403 }
-    );
+    return featureDisabledResponse("Analytics charts");
   }
 
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return forbiddenResponse("Admin access required");
   }
 
   const { searchParams } = new URL(request.url);
@@ -62,11 +60,7 @@ export async function GET(request: NextRequest) {
     .order("downloaded_at", { ascending: true });
 
   if (error) {
-    console.error("Error fetching downloads:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch analytics" },
-      { status: 500 }
-    );
+    return handleDbError(error, "fetch download analytics");
   }
 
   // Group downloads by period

@@ -1,29 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser, isAdmin } from "@/lib/auth";
 import { loadAIConfig, saveAIConfig, type AIConfig } from "@/lib/ai-config";
+import { forbiddenResponse, handleDbError } from "@/lib/api/helpers";
 
 export async function GET() {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   try {
     const config = await loadAIConfig();
     return NextResponse.json(config);
   } catch (error) {
-    console.error("Failed to load AI config:", error);
-    return NextResponse.json(
-      { error: "Failed to load AI configuration" },
-      { status: 500 }
-    );
+    return handleDbError(error, "load AI configuration");
   }
 }
 
 export async function PUT(request: NextRequest) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   try {
@@ -45,18 +42,14 @@ export async function PUT(request: NextRequest) {
       lastUpdated: config.lastUpdated,
     });
   } catch (error) {
-    console.error("Failed to save AI config:", error);
-    return NextResponse.json(
-      { error: "Failed to save AI configuration" },
-      { status: 500 }
-    );
+    return handleDbError(error, "save AI configuration");
   }
 }
 
 export async function PATCH(request: NextRequest) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   try {
@@ -102,10 +95,6 @@ export async function PATCH(request: NextRequest) {
       lastUpdated: updatedConfig.lastUpdated,
     });
   } catch (error) {
-    console.error("Failed to update AI config:", error);
-    return NextResponse.json(
-      { error: "Failed to update AI configuration" },
-      { status: 500 }
-    );
+    return handleDbError(error, "update AI configuration");
   }
 }

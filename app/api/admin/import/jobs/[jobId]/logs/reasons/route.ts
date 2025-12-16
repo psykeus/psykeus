@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUser, isAdmin } from "@/lib/auth";
 import * as jobService from "@/lib/services/import-job-service";
 import * as logService from "@/lib/services/import-log-service";
+import { forbiddenResponse, notFoundResponse, handleDbError } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -19,10 +20,10 @@ interface RouteParams {
  * GET /api/admin/import/jobs/[jobId]/logs/reasons
  * Get grouped reasons for skip/fail logs
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   try {
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Verify job exists
     const job = await jobService.getImportJob(jobId);
     if (!job) {
-      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+      return notFoundResponse("Job");
     }
 
     const reasons = await logService.getImportLogReasons(jobId);
@@ -42,10 +43,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       file_types: fileTypes,
     });
   } catch (error) {
-    console.error("Get log reasons error:", error);
-    return NextResponse.json(
-      { error: "Failed to get log reasons" },
-      { status: 500 }
-    );
+    return handleDbError(error, "get log reasons");
   }
 }

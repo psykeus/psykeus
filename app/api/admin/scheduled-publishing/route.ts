@@ -16,6 +16,7 @@ import {
   clearSchedule,
 } from "@/lib/scheduled-publishing";
 import { z } from "zod";
+import { forbiddenResponse } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -33,7 +34,7 @@ const scheduleSchema = z.object({
 export async function GET() {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   const enabled = await isScheduledPublishingEnabled();
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
     // Require admin auth
     const user = await getUser();
     if (!user || !isAdmin(user)) {
-      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+      return forbiddenResponse("Admin access required");
     }
   }
 
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   const enabled = await isScheduledPublishingEnabled();

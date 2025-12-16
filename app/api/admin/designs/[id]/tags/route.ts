@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getUser, isAdmin } from "@/lib/auth";
+import { parseJsonBody, forbiddenResponse } from "@/lib/api/helpers";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -9,18 +10,22 @@ interface RouteParams {
 // PUT - Replace all tags for a design
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   const { id: designId } = await params;
-  const supabase = createServiceClient();
   const user = await getUser();
 
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
-  const { tags } = await request.json();
+  const bodyResult = await parseJsonBody<{ tags?: unknown }>(request);
+  if (!bodyResult.success) return bodyResult.response!;
+
+  const { tags } = bodyResult.data!;
 
   if (!Array.isArray(tags)) {
     return NextResponse.json({ error: "Tags must be an array" }, { status: 400 });
   }
+
+  const supabase = createServiceClient();
 
   // Delete existing tags for this design
   await supabase

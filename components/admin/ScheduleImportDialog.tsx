@@ -15,7 +15,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Clock, Loader2 } from "lucide-react";
+import { Calendar, Clock } from "lucide-react";
+import { Spinner } from "@/components/ui/loading-states";
 
 interface ScheduleImportDialogProps {
   jobId: string;
@@ -217,7 +218,7 @@ export function ScheduleImportDialog({ jobId, disabled }: ScheduleImportDialogPr
           <Button onClick={handleSchedule} disabled={isScheduling}>
             {isScheduling ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Spinner size="sm" className="mr-2" />
                 Scheduling...
               </>
             ) : (

@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
+import { isWebhooksEnabled } from "@/lib/feature-flags";
 import { LayoutDashboard, Layers, Upload, Copy, Users, Bot, PackagePlus, ToggleRight, CreditCard, Webhook } from "lucide-react";
 
-const navItems = [
+const baseNavItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/admin/designs", icon: Layers, label: "Designs" },
   { href: "/admin/upload", icon: Upload, label: "Upload" },
@@ -12,7 +13,6 @@ const navItems = [
   { href: "/admin/features", icon: ToggleRight, label: "Features" },
   { href: "/admin/ai-settings", icon: Bot, label: "AI Settings" },
   { href: "/admin/stripe", icon: CreditCard, label: "Stripe" },
-  { href: "/admin/webhooks", icon: Webhook, label: "Webhooks" },
 ];
 
 export default async function AdminLayout({
@@ -21,6 +21,13 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   await requireAdmin();
+
+  // Build nav items based on enabled features
+  const webhooksEnabled = await isWebhooksEnabled();
+  const navItems = [
+    ...baseNavItems,
+    ...(webhooksEnabled ? [{ href: "/admin/webhooks", icon: Webhook, label: "Webhooks" }] : []),
+  ];
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)]">

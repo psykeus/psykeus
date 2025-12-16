@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
-import { X, ZoomIn, ZoomOut, Move, Loader2 } from "lucide-react";
+import { X, ZoomIn, ZoomOut, Move } from "lucide-react";
+import { Spinner } from "@/components/ui/loading-states";
 import { Button } from "@/components/ui/button";
 import { PREVIEW_SIZES, IMAGE_FIT } from "@/lib/preview-config";
 
@@ -272,7 +273,7 @@ export function ImageLightbox({ src, alt, children, designSlug }: Props) {
             {/* Loading indicator for high-quality image */}
             {loadingHighQuality && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
-                <Loader2 className="h-8 w-8 text-white animate-spin" />
+                <Spinner size="lg" className="text-white" />
               </div>
             )}
 

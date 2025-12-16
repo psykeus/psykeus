@@ -6,6 +6,7 @@ import { startJobProcessing } from "@/lib/import/job-processor";
 import { scanDirectory } from "@/lib/import/scanner";
 import type { ProcessingOptions } from "@/lib/types/import";
 import { DEFAULT_PROCESSING_OPTIONS } from "@/lib/types/import";
+import { forbiddenResponse, notFoundResponse, handleDbError } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -20,7 +21,7 @@ interface RouteParams {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   try {
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const job = await jobService.getImportJob(jobId);
 
     if (!job) {
-      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+      return notFoundResponse("Job");
     }
 
     if (!["pending", "paused"].includes(job.status)) {
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Refresh job to get updated total_files
     const updatedJob = await jobService.getImportJob(jobId);
     if (!updatedJob) {
-      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+      return notFoundResponse("Job");
     }
 
     // Start processing in background (don't await)
@@ -122,10 +123,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       job_id: jobId,
     });
   } catch (error) {
-    console.error("Start job error:", error);
-    return NextResponse.json(
-      { error: "Failed to start import job" },
-      { status: 500 }
-    );
+    return handleDbError(error, "start import job");
   }
 }

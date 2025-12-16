@@ -1,19 +1,20 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { getUserWithTier } from "@/lib/services/user-service";
+import { unauthorizedResponse, notFoundResponse } from "@/lib/api/helpers";
 
 export async function GET() {
   const user = await getUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorizedResponse();
   }
 
   // Get full user profile with tier info
   const userWithTier = await getUserWithTier(user.id);
 
   if (!userWithTier) {
-    return NextResponse.json({ error: "User not found" }, { status: 404 });
+    return notFoundResponse("User");
   }
 
   return NextResponse.json({

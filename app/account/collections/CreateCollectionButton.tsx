@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus } from "lucide-react";
+import { Spinner } from "@/components/ui/loading-states";
+import { InlineError } from "@/components/ui/error-states";
 import {
   Dialog,
   DialogContent,
@@ -78,11 +80,7 @@ export function CreateCollectionButton() {
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {error && (
-            <div className="text-sm text-destructive bg-destructive/10 p-2 rounded">
-              {error}
-            </div>
-          )}
+          {error && <InlineError message={error} />}
 
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
@@ -133,7 +131,7 @@ export function CreateCollectionButton() {
             <Button onClick={handleCreate} disabled={creating}>
               {creating ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Spinner size="sm" className="mr-2" />
                   Creating...
                 </>
               ) : (

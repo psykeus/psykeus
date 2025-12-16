@@ -10,6 +10,7 @@ import { getUser, isAdmin } from "@/lib/auth";
 import * as jobService from "@/lib/services/import-job-service";
 import * as logService from "@/lib/services/import-log-service";
 import type { ImportLogStatus } from "@/lib/types/import";
+import { forbiddenResponse, notFoundResponse, handleDbError } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -33,7 +34,7 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   try {
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Verify job exists
     const job = await jobService.getImportJob(jobId);
     if (!job) {
-      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+      return notFoundResponse("Job");
     }
 
     // Check if import_logs table exists (migration may not be applied)
@@ -117,10 +118,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       summary,
     });
   } catch (error) {
-    console.error("Get import logs error:", error);
-    return NextResponse.json(
-      { error: "Failed to get import logs" },
-      { status: 500 }
-    );
+    return handleDbError(error, "get import logs");
   }
 }

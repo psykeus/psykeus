@@ -1,19 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUser, isAdmin } from "@/lib/auth";
+import { forbiddenResponse, notFoundResponse, handleDbError } from "@/lib/api/helpers";
 
 interface RouteParams {
   params: Promise<{ designId: string }>;
 }
 
 // POST - Re-process a design (trigger AI metadata regeneration)
-export async function POST(request: NextRequest, { params }: RouteParams) {
+export async function POST(_request: NextRequest, { params }: RouteParams) {
   const { designId } = await params;
   const supabase = await createClient();
   const user = await getUser();
 
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   // Get the design
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (designError || !design) {
-    return NextResponse.json({ error: "Design not found" }, { status: 404 });
+    return notFoundResponse("Design");
   }
 
   // In a real implementation, you would:
@@ -49,11 +50,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     .eq("id", designId);
 
   if (updateError) {
-    console.error("Error marking for reprocess:", updateError);
-    return NextResponse.json(
-      { error: "Failed to mark for reprocessing" },
-      { status: 500 }
-    );
+    return handleDbError(updateError, "mark for reprocessing");
   }
 
   return NextResponse.json({

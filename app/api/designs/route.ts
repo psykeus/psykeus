@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from "@/lib/rate-limit";
 import { browseDesignsSchema, parseSearchParams, formatZodError } from "@/lib/validations";
 import { z } from "zod";
+import { handleDbError } from "@/lib/api/helpers";
 
 export async function GET(request: NextRequest) {
   // Rate limiting
@@ -102,11 +103,7 @@ export async function GET(request: NextRequest) {
   const { data, error, count } = await query.range(from, to);
 
   if (error) {
-    console.error("Error fetching designs:", error);
-    return NextResponse.json(
-      { error: "Failed to load designs" },
-      { status: 500, headers: rateLimit.headers }
-    );
+    return handleDbError(error, "load designs", rateLimit.headers);
   }
 
   return NextResponse.json(

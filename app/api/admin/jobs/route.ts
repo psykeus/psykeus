@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser, isAdmin } from "@/lib/auth";
 import { jobQueue, enqueueJob, type JobData } from "@/lib/jobs/queue";
+import { forbiddenResponse, handleDbError } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -18,7 +19,7 @@ export const runtime = "nodejs";
 export async function GET() {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   const isAvailable = await jobQueue.isAvailable();
@@ -52,7 +53,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   try {
@@ -100,10 +101,6 @@ export async function POST(request: NextRequest) {
       message: `Job ${type} queued successfully`,
     });
   } catch (error) {
-    console.error("Error adding job:", error);
-    return NextResponse.json(
-      { error: "Failed to add job to queue" },
-      { status: 500 }
-    );
+    return handleDbError(error, "add job to queue");
   }
 }

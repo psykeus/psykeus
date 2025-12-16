@@ -6,12 +6,13 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { getUser, isAdmin } from "@/lib/auth";
 import {
   getScheduledImports,
   processScheduledImports,
   getTimeUntilStart,
 } from "@/lib/services/scheduled-import-service";
+import { forbiddenResponse, handleDbError } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -20,9 +21,12 @@ export const runtime = "nodejs";
  * List all scheduled import jobs (pending jobs with future scheduled_start_at)
  */
 export async function GET() {
-  try {
-    await requireAdmin();
+  const user = await getUser();
+  if (!user || !isAdmin(user)) {
+    return forbiddenResponse("Admin access required");
+  }
 
+  try {
     const scheduledJobs = await getScheduledImports();
 
     // Add time until start for each job
@@ -36,11 +40,7 @@ export async function GET() {
       count: jobsWithTimeLeft.length,
     });
   } catch (error) {
-    console.error("[ScheduledImportsAPI] Error fetching scheduled imports:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return handleDbError(error, "fetch scheduled imports");
   }
 }
 
@@ -55,18 +55,21 @@ export async function GET() {
  * Returns summary of jobs started and any errors
  */
 export async function POST(request: NextRequest) {
-  try {
-    // Check for cron secret or admin auth
-    const cronSecret = request.headers.get("x-cron-secret");
-    const expectedSecret = process.env.CRON_SECRET;
+  // Check for cron secret or admin auth
+  const cronSecret = request.headers.get("x-cron-secret");
+  const expectedSecret = process.env.CRON_SECRET;
 
-    if (cronSecret && expectedSecret && cronSecret === expectedSecret) {
-      // Authenticated via cron secret - proceed
-    } else {
-      // Fall back to admin auth
-      await requireAdmin();
+  if (cronSecret && expectedSecret && cronSecret === expectedSecret) {
+    // Authenticated via cron secret - proceed
+  } else {
+    // Fall back to admin auth
+    const user = await getUser();
+    if (!user || !isAdmin(user)) {
+      return forbiddenResponse("Admin access required");
     }
+  }
 
+  try {
     const result = await processScheduledImports();
 
     return NextResponse.json({
@@ -78,10 +81,6 @@ export async function POST(request: NextRequest) {
         : "No scheduled jobs due",
     });
   } catch (error) {
-    console.error("[ScheduledImportsAPI] Error processing scheduled imports:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return handleDbError(error, "process scheduled imports");
   }
 }

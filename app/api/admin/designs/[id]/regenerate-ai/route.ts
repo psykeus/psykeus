@@ -17,6 +17,7 @@ import { parseObjBuffer } from "@/lib/parsers/obj-parser";
 import { parseGltfBuffer } from "@/lib/parsers/gltf-parser";
 import { parse3mfBuffer } from "@/lib/parsers/3mf-parser";
 import * as fs from "fs/promises";
+import { forbiddenResponse, notFoundResponse, handleDbError } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -31,7 +32,7 @@ interface RouteParams {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   try {
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (designError || !design) {
-      return NextResponse.json({ error: "Design not found" }, { status: 404 });
+      return notFoundResponse("Design");
     }
 
     // Find the primary file or the first active file
@@ -229,7 +230,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     if (updateError) {
       console.error("[REGENERATE-AI] Failed to update design:", updateError);
-      return NextResponse.json({ error: "Failed to update design metadata" }, { status: 500 });
+      return handleDbError(updateError, "update design metadata");
     }
 
     // Update tags if provided

@@ -8,6 +8,7 @@ import fs from "fs/promises";
 import { createReadStream } from "fs";
 import path from "path";
 import type { ScannedFile, ScanResult, ScanError } from "@/lib/types/import";
+import { forbiddenResponse, parseJsonBody, handleDbError } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -18,12 +19,14 @@ export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   try {
-    const body = await request.json();
-    const { source_path, compute_hashes = false } = body;
+    const bodyResult = await parseJsonBody<{ source_path?: string; compute_hashes?: boolean }>(request);
+    if (!bodyResult.success) return bodyResult.response!;
+
+    const { source_path, compute_hashes = false } = bodyResult.data!;
 
     if (!source_path) {
       return NextResponse.json(
@@ -88,11 +91,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Scan error:", error);
-    return NextResponse.json(
-      { error: "Failed to scan directory" },
-      { status: 500 }
-    );
+    return handleDbError(error, "scan directory");
   }
 }
 

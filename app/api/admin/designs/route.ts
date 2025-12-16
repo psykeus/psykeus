@@ -3,31 +3,28 @@ import { createClient } from "@/lib/supabase/server";
 import { getUser, isAdmin } from "@/lib/auth";
 import { slugify } from "@/lib/utils";
 import { escapeIlikePattern } from "@/lib/validations";
-import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from "@/lib/rate-limit";
+import {
+  validateRateLimit,
+  parsePaginationParams,
+  parseJsonBody,
+  forbiddenResponse,
+  handleDbError,
+} from "@/lib/api/helpers";
 
 // GET - List all designs for admin (includes non-public)
 export async function GET(request: NextRequest) {
   const user = await getUser();
 
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
-  // Rate limiting
-  const identifier = getClientIdentifier(request, user.id);
-  const rateLimit = checkRateLimit(identifier, RATE_LIMITS.admin);
-
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: "Rate limit exceeded" },
-      { status: 429, headers: rateLimit.headers }
-    );
-  }
+  const rateLimit = validateRateLimit(request, user.id, "admin");
+  if (!rateLimit.success) return rateLimit.response!;
 
   const supabase = await createClient();
   const { searchParams } = new URL(request.url);
-  const page = Number(searchParams.get("page") ?? "1");
-  const pageSize = Number(searchParams.get("pageSize") ?? "50");
+  const { page, pageSize, from, to } = parsePaginationParams(searchParams, { defaultPageSize: 50 });
   const q = searchParams.get("q") ?? "";
 
   let query = supabase
@@ -36,22 +33,14 @@ export async function GET(request: NextRequest) {
     .order("updated_at", { ascending: false });
 
   if (q) {
-    // Escape special ILIKE pattern characters to prevent SQL injection
     const escapedQ = escapeIlikePattern(q);
     query = query.or(`title.ilike.%${escapedQ}%,description.ilike.%${escapedQ}%`);
   }
 
-  const from = (page - 1) * pageSize;
-  const to = from + pageSize - 1;
-
   const { data, error, count } = await query.range(from, to);
 
   if (error) {
-    console.error("Error fetching designs:", error);
-    return NextResponse.json(
-      { error: "Failed to load designs" },
-      { status: 500, headers: rateLimit.headers }
-    );
+    return handleDbError(error, "fetch designs", rateLimit.headers);
   }
 
   return NextResponse.json(
@@ -62,14 +51,25 @@ export async function GET(request: NextRequest) {
 
 // POST - Create a new design
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
   const user = await getUser();
 
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
-  const body = await request.json();
+  const bodyResult = await parseJsonBody<{
+    title?: string;
+    description?: string;
+    preview_path?: string;
+    project_type?: string;
+    difficulty?: string;
+    categories?: string[];
+    style?: string;
+    approx_dimensions?: string;
+    is_public?: boolean;
+  }>(request);
+  if (!bodyResult.success) return bodyResult.response!;
+
   const {
     title,
     description,
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     style,
     approx_dimensions,
     is_public,
-  } = body;
+  } = bodyResult.data!;
 
   if (!title || !preview_path) {
     return NextResponse.json(
@@ -88,6 +88,8 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   }
+
+  const supabase = await createClient();
 
   // Generate unique slug
   let slug = slugify(title);
@@ -119,11 +121,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    console.error("Error creating design:", error);
-    return NextResponse.json(
-      { error: "Failed to create design" },
-      { status: 500 }
-    );
+    return handleDbError(error, "create design");
   }
 
   return NextResponse.json({ design }, { status: 201 });

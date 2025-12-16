@@ -12,7 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Check, Loader2, Crown, Sparkles } from "lucide-react";
+import { Check, Crown, Sparkles } from "lucide-react";
+import { Spinner } from "@/components/ui/loading-states";
 import type { AccessTierWithStripe } from "@/lib/types";
 
 interface PricingCardsProps {
@@ -242,7 +243,7 @@ export function PricingCards({ tiers, currentTierId, isLoggedIn }: PricingCardsP
                 >
                   {isLoading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Spinner size="sm" className="mr-2" />
                       Loading...
                     </>
                   ) : isCurrentTier ? (

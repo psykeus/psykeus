@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { DesignsTable } from "@/components/admin/DesignsTable";
+import { Pagination } from "@/components/Pagination";
 
 interface SearchParams {
   q?: string;
@@ -161,54 +162,7 @@ export default async function AdminDesignsPage({ searchParams }: Props) {
       />
 
       {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2 flex-wrap">
-          {page > 1 && (
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/admin/designs?page=${page - 1}${q ? `&q=${q}` : ""}${status ? `&status=${status}` : ""}${pageSize !== 20 ? `&perPage=${pageSize}` : ""}`}>
-                Previous
-              </Link>
-            </Button>
-          )}
-          {Array.from({ length: Math.min(totalPages, 10) }, (_, i) => {
-            // Show pages around current page for large page counts
-            let pageNum: number;
-            if (totalPages <= 10) {
-              pageNum = i + 1;
-            } else if (page <= 5) {
-              pageNum = i + 1;
-            } else if (page >= totalPages - 4) {
-              pageNum = totalPages - 9 + i;
-            } else {
-              pageNum = page - 4 + i;
-            }
-            return pageNum;
-          }).map((p) => (
-            <Button
-              key={p}
-              asChild
-              variant={p === page ? "default" : "outline"}
-              size="sm"
-            >
-              <Link href={`/admin/designs?page=${p}${q ? `&q=${q}` : ""}${status ? `&status=${status}` : ""}${pageSize !== 20 ? `&perPage=${pageSize}` : ""}`}>
-                {p}
-              </Link>
-            </Button>
-          ))}
-          {totalPages > 10 && page < totalPages - 4 && (
-            <span className="text-muted-foreground px-2">
-              ... {totalPages}
-            </span>
-          )}
-          {page < totalPages && (
-            <Button asChild variant="outline" size="sm">
-              <Link href={`/admin/designs?page=${page + 1}${q ? `&q=${q}` : ""}${status ? `&status=${status}` : ""}${pageSize !== 20 ? `&perPage=${pageSize}` : ""}`}>
-                Next
-              </Link>
-            </Button>
-          )}
-        </div>
-      )}
+      <Pagination currentPage={page} totalPages={totalPages} />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import * as jobService from "@/lib/services/import-job-service";
 import * as itemService from "@/lib/services/import-item-service";
 import { selectPrimaryFile, determineFileRole } from "@/lib/import/project-detector";
 import type { CreateImportJobRequest, ScannedFile, DetectedProjectPreview, ProjectRole } from "@/lib/types/import";
+import { forbiddenResponse, parseJsonBody, handleDbError } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,7 @@ export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   try {
@@ -38,11 +39,7 @@ export async function GET(request: NextRequest) {
       total_pages: Math.ceil(total / limit),
     });
   } catch (error) {
-    console.error("List jobs error:", error);
-    return NextResponse.json(
-      { error: "Failed to list import jobs" },
-      { status: 500 }
-    );
+    return handleDbError(error, "list import jobs");
   }
 }
 
@@ -53,14 +50,17 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   try {
-    const body: CreateImportJobRequest & {
+    const bodyResult = await parseJsonBody<CreateImportJobRequest & {
       selected_files?: ScannedFile[];
       detected_projects?: DetectedProjectPreview[];
-    } = await request.json();
+    }>(request);
+    if (!bodyResult.success) return bodyResult.response!;
+
+    const body = bodyResult.data!;
 
     if (!body.source_type) {
       return NextResponse.json(
@@ -138,10 +138,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(job, { status: 201 });
   } catch (error) {
-    console.error("Create job error:", error);
-    return NextResponse.json(
-      { error: "Failed to create import job" },
-      { status: 500 }
-    );
+    return handleDbError(error, "create import job");
   }
 }

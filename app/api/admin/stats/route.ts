@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getUser, isAdmin } from "@/lib/auth";
+import { forbiddenResponse } from "@/lib/api/helpers";
 
 export async function GET() {
   const supabase = await createClient();
   const user = await getUser();
 
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   // Get total designs

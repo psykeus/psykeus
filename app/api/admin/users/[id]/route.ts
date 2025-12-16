@@ -20,6 +20,12 @@ import {
   banUser,
 } from "@/lib/services/user-service";
 import type { IdRouteParams } from "@/lib/types";
+import {
+  parseJsonBody,
+  notFoundResponse,
+  forbiddenResponse,
+  handleDbError,
+} from "@/lib/api/helpers";
 
 export async function GET(request: NextRequest, { params }: IdRouteParams) {
   try {
@@ -29,7 +35,7 @@ export async function GET(request: NextRequest, { params }: IdRouteParams) {
     const user = await getUserWithTier(id);
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return notFoundResponse("User");
     }
 
     // Get additional stats
@@ -65,11 +71,7 @@ export async function GET(request: NextRequest, { params }: IdRouteParams) {
       sessions: sessions.data || [],
     });
   } catch (error) {
-    console.error("[Admin User API] Error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch user" },
-      { status: 500 }
-    );
+    return handleDbError(error, "fetch user");
   }
 }
 
@@ -77,7 +79,11 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
   try {
     const admin = await requireAdmin();
     const { id } = await params;
-    const body = await request.json();
+
+    const bodyResult = await parseJsonBody<Record<string, unknown>>(request);
+    if (!bodyResult.success) return bodyResult.response!;
+
+    const body = bodyResult.data!;
     const adminIsSuperAdmin = isSuperAdmin(admin);
 
     const supabase = createServiceClient();
@@ -90,23 +96,17 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
       .single();
 
     if (!targetUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return notFoundResponse("User");
     }
 
     // Prevent modifying other super_admins (only super_admin can modify themselves)
     if (targetUser.role === "super_admin" && targetUser.id !== admin.id) {
-      return NextResponse.json(
-        { error: "Cannot modify other super admins" },
-        { status: 403 }
-      );
+      return forbiddenResponse("Cannot modify other super admins");
     }
 
     // Regular admins cannot modify other admins
     if (!adminIsSuperAdmin && targetUser.role === "admin" && targetUser.id !== admin.id) {
-      return NextResponse.json(
-        { error: "Only super admins can modify other admins" },
-        { status: 403 }
-      );
+      return forbiddenResponse("Only super admins can modify other admins");
     }
 
     const { action, ...updateData } = body;
@@ -114,9 +114,9 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
     // Handle specific actions
     switch (action) {
       case "suspend": {
-        const success = await suspendUser(id, updateData.reason || "No reason provided", admin.id);
+        const success = await suspendUser(id, updateData.reason as string || "No reason provided", admin.id);
         if (!success) {
-          return NextResponse.json({ error: "Failed to suspend user" }, { status: 500 });
+          return handleDbError(null, "suspend user");
         }
         return NextResponse.json({ success: true, message: "User suspended" });
       }
@@ -124,7 +124,7 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
       case "unsuspend": {
         const success = await unsuspendUser(id, admin.id);
         if (!success) {
-          return NextResponse.json({ error: "Failed to unsuspend user" }, { status: 500 });
+          return handleDbError(null, "unsuspend user");
         }
         return NextResponse.json({ success: true, message: "User unsuspended" });
       }
@@ -132,14 +132,11 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
       case "ban": {
         // Only super_admin can ban users
         if (!adminIsSuperAdmin) {
-          return NextResponse.json(
-            { error: "Only super admins can ban users" },
-            { status: 403 }
-          );
+          return forbiddenResponse("Only super admins can ban users");
         }
-        const success = await banUser(id, updateData.reason || "No reason provided", admin.id);
+        const success = await banUser(id, updateData.reason as string || "No reason provided", admin.id);
         if (!success) {
-          return NextResponse.json({ error: "Failed to ban user" }, { status: 500 });
+          return handleDbError(null, "ban user");
         }
         return NextResponse.json({ success: true, message: "User banned" });
       }
@@ -147,13 +144,13 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
       case "update_tier": {
         const success = await updateUserTier(
           id,
-          updateData.tier_id,
-          updateData.expires_at || null,
+          updateData.tier_id as string,
+          (updateData.expires_at as string) || null,
           admin.id,
-          updateData.reason
+          updateData.reason as string
         );
         if (!success) {
-          return NextResponse.json({ error: "Failed to update tier" }, { status: 500 });
+          return handleDbError(null, "update tier");
         }
         return NextResponse.json({ success: true, message: "Tier updated" });
       }
@@ -161,14 +158,11 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
       case "update_role": {
         // Only super_admin can change roles
         if (!adminIsSuperAdmin) {
-          return NextResponse.json(
-            { error: "Only super admins can change user roles" },
-            { status: 403 }
-          );
+          return forbiddenResponse("Only super admins can change user roles");
         }
 
         // Only allow changing to/from user and admin roles
-        if (!["user", "admin"].includes(updateData.role)) {
+        if (!["user", "admin"].includes(updateData.role as string)) {
           return NextResponse.json(
             { error: "Invalid role. Only 'user' or 'admin' allowed." },
             { status: 400 }
@@ -181,7 +175,7 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
           .eq("id", id);
 
         if (error) {
-          return NextResponse.json({ error: "Failed to update role" }, { status: 500 });
+          return handleDbError(error, "update role");
         }
 
         // Log the action
@@ -204,7 +198,7 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
           .eq("user_id", id);
 
         if (error) {
-          return NextResponse.json({ error: "Failed to force logout" }, { status: 500 });
+          return handleDbError(error, "force logout");
         }
 
         return NextResponse.json({ success: true, message: "User logged out from all devices" });
@@ -228,17 +222,13 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
             .eq("id", id);
 
           if (error) {
-            return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
+            return handleDbError(error, "update user");
           }
         }
 
         return NextResponse.json({ success: true, message: "User updated" });
     }
   } catch (error) {
-    console.error("[Admin User API] Error:", error);
-    return NextResponse.json(
-      { error: "Failed to update user" },
-      { status: 500 }
-    );
+    return handleDbError(error, "update user");
   }
 }

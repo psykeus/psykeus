@@ -10,6 +10,7 @@ import {
 } from "@/lib/services/user-service";
 import type { DesignIdRouteParams } from "@/lib/types";
 import { z } from "zod";
+import { handleDbError } from "@/lib/api/helpers";
 
 const paramsSchema = z.object({
   designId: z.string().uuid(),
@@ -167,11 +168,7 @@ export async function POST(request: NextRequest, { params }: DesignIdRouteParams
     });
 
   if (signedError || !signedUrlData?.signedUrl) {
-    console.error("Error generating signed URL:", signedError);
-    return NextResponse.json(
-      { error: "Failed to generate download URL" },
-      { status: 500, headers: rateLimit.headers }
-    );
+    return handleDbError(signedError, "generate download URL", rateLimit.headers);
   }
 
   return NextResponse.json(

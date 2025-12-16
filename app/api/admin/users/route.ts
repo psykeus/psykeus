@@ -9,14 +9,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin, isSuperAdmin } from "@/lib/auth";
 import { getUsers, getAccessTiers } from "@/lib/services/user-service";
 import { createServiceClient } from "@/lib/supabase/server";
+import {
+  parsePaginationParams,
+  parseJsonBody,
+  forbiddenResponse,
+  handleDbError,
+} from "@/lib/api/helpers";
 
 export async function GET(request: NextRequest) {
   try {
     await requireAdmin();
 
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const pageSize = parseInt(searchParams.get("pageSize") || "20", 10);
+    const { page, pageSize } = parsePaginationParams(searchParams, { defaultPageSize: 20 });
     const search = searchParams.get("search") || undefined;
     const status = searchParams.get("status") || undefined;
     const tierId = searchParams.get("tierId") || undefined;
@@ -37,20 +42,24 @@ export async function GET(request: NextRequest) {
       tiers,
     });
   } catch (error) {
-    console.error("[Admin Users API] Error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch users" },
-      { status: 500 }
-    );
+    return handleDbError(error, "fetch users");
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const admin = await requireAdmin();
-    const body = await request.json();
 
-    const { email, name, role, tier_id, password } = body;
+    const bodyResult = await parseJsonBody<{
+      email?: string;
+      name?: string;
+      role?: string;
+      tier_id?: string;
+      password?: string;
+    }>(request);
+    if (!bodyResult.success) return bodyResult.response!;
+
+    const { email, name, role, tier_id, password } = bodyResult.data!;
 
     // Validate required fields
     if (!email) {
@@ -62,10 +71,7 @@ export async function POST(request: NextRequest) {
 
     // Only super_admin can create admin users
     if (role === "admin" && !isSuperAdmin(admin)) {
-      return NextResponse.json(
-        { error: "Only super admins can create admin users" },
-        { status: 403 }
-      );
+      return forbiddenResponse("Only super admins can create admin users");
     }
 
     // Generate password if not provided
@@ -117,13 +123,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (userError) {
-      console.error("[Create User] User table error:", userError);
       // Try to clean up auth user
       await supabase.auth.admin.deleteUser(authData.user.id);
-      return NextResponse.json(
-        { error: "Failed to create user record" },
-        { status: 500 }
-      );
+      return handleDbError(userError, "create user record");
     }
 
     // Log the action
@@ -147,11 +149,7 @@ export async function POST(request: NextRequest) {
       ...(password ? {} : { generatedPassword: userPassword }),
     });
   } catch (error) {
-    console.error("[Admin Users API] Create error:", error);
-    return NextResponse.json(
-      { error: "Failed to create user" },
-      { status: 500 }
-    );
+    return handleDbError(error, "create user");
   }
 }
 

@@ -5,10 +5,9 @@ import Link from "next/link";
 import { formatDate } from "@/lib/utils";
 import type { UserWithTier, AccessTier, UserStatus } from "@/lib/types";
 import { CreateUserDialog } from "@/components/admin/CreateUserDialog";
+import { StatusBadge, RoleBadge, TierBadge } from "@/components/ui/status-badges";
 import {
   Search,
-  ChevronLeft,
-  ChevronRight,
   MoreVertical,
   Shield,
   Crown,
@@ -18,6 +17,10 @@ import {
   LogOut,
   Eye,
 } from "lucide-react";
+import { ClientPagination } from "@/components/Pagination";
+import { PageLoading } from "@/components/ui/loading-states";
+import { PageError } from "@/components/ui/error-states";
+import { NoUsers } from "@/components/ui/empty-states";
 
 interface UsersResponse {
   users: UserWithTier[];
@@ -133,107 +136,18 @@ export function UsersClient() {
     setActionData({});
   };
 
-  const getStatusBadge = (status: UserStatus) => {
-    switch (status) {
-      case "active":
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 rounded-full text-xs">
-            <CheckCircle className="h-3 w-3" />
-            Active
-          </span>
-        );
-      case "suspended":
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 rounded-full text-xs">
-            <XCircle className="h-3 w-3" />
-            Suspended
-          </span>
-        );
-      case "banned":
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 rounded-full text-xs">
-            <Ban className="h-3 w-3" />
-            Banned
-          </span>
-        );
-    }
-  };
-
-  const getRoleBadge = (role: string) => {
-    switch (role) {
-      case "super_admin":
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400 rounded-full text-xs">
-            <Crown className="h-3 w-3" />
-            Super Admin
-          </span>
-        );
-      case "admin":
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 rounded-full text-xs">
-            <Shield className="h-3 w-3" />
-            Admin
-          </span>
-        );
-      default:
-        return (
-          <span className="px-2 py-1 bg-secondary rounded-full text-xs">
-            User
-          </span>
-        );
-    }
-  };
-
-  const getTierBadge = (tier: AccessTier | null | undefined) => {
-    if (!tier) {
-      return (
-        <span className="px-2 py-1 bg-secondary rounded-full text-xs">Free</span>
-      );
-    }
-
-    switch (tier.slug) {
-      case "pro":
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-full text-xs">
-            <Crown className="h-3 w-3" />
-            Pro
-          </span>
-        );
-      case "premium":
-        return (
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400 rounded-full text-xs">
-            <Shield className="h-3 w-3" />
-            Premium
-          </span>
-        );
-      default:
-        return (
-          <span className="px-2 py-1 bg-secondary rounded-full text-xs">
-            {tier.name}
-          </span>
-        );
-    }
-  };
 
   if (loading && !data) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-      </div>
-    );
+    return <PageLoading message="Loading users..." />;
   }
 
   if (error) {
     return (
-      <div className="text-center py-12 text-red-500">
-        <p>Error: {error}</p>
-        <button
-          onClick={fetchUsers}
-          className="mt-4 text-primary hover:underline"
-        >
-          Try again
-        </button>
-      </div>
+      <PageError
+        title="Failed to load users"
+        message={error}
+        onRetry={fetchUsers}
+      />
     );
   }
 
@@ -377,9 +291,9 @@ export function UsersClient() {
                       )}
                     </div>
                   </td>
-                  <td className="p-4">{getRoleBadge(user.role)}</td>
-                  <td className="p-4">{getTierBadge(user.access_tier)}</td>
-                  <td className="p-4">{getStatusBadge(user.status)}</td>
+                  <td className="p-4"><RoleBadge role={user.role} /></td>
+                  <td className="p-4"><TierBadge tier={user.access_tier} /></td>
+                  <td className="p-4"><StatusBadge status={user.status} /></td>
                   <td className="p-4 text-sm text-muted-foreground">
                     {user.last_login_at ? formatDate(user.last_login_at) : "Never"}
                   </td>
@@ -464,40 +378,22 @@ export function UsersClient() {
           </table>
         </div>
 
-        {(!data?.users || data.users.length === 0) && (
-          <div className="text-center py-12 text-muted-foreground">
-            No users found.
-          </div>
-        )}
+        {(!data?.users || data.users.length === 0) && <NoUsers />}
       </div>
 
       {/* Pagination */}
-      {data && data.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Showing {(page - 1) * data.pageSize + 1} to{" "}
-            {Math.min(page * data.pageSize, data.total)} of {data.total} users
-          </p>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPage(Math.max(1, page - 1))}
-              disabled={page === 1}
-              className="p-2 border rounded-md hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="px-4 py-2 border rounded-md bg-secondary">
-              {page} / {data.totalPages}
-            </span>
-            <button
-              onClick={() => setPage(Math.min(data.totalPages, page + 1))}
-              disabled={page === data.totalPages}
-              className="p-2 border rounded-md hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
+      {data && (
+        <ClientPagination
+          currentPage={page}
+          totalPages={data.totalPages}
+          onPageChange={setPage}
+          showSummary={{
+            from: (page - 1) * data.pageSize + 1,
+            to: Math.min(page * data.pageSize, data.total),
+            total: data.total,
+            itemName: "users",
+          }}
+        />
       )}
 
       {/* Action Modal */}

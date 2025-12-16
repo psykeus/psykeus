@@ -73,3 +73,45 @@ export function anonymizeIp(ip: string): string {
     return parts.join(".");
   }
 }
+
+/**
+ * Get current timestamp as ISO string
+ * Consolidates `new Date().toISOString()` pattern
+ */
+export const now = (): string => new Date().toISOString();
+
+/**
+ * Calculate pagination range for Supabase queries
+ * @param page - 1-indexed page number
+ * @param pageSize - Number of items per page
+ * @returns Object with `from` and `to` for Supabase .range()
+ */
+export function getPaginationRange(page: number, pageSize: number): { from: number; to: number } {
+  const from = (page - 1) * pageSize;
+  return { from, to: from + pageSize - 1 };
+}
+
+/**
+ * Handle Supabase database errors consistently
+ * @param error - The error from Supabase
+ * @param operation - Description of the operation (e.g., "fetch users")
+ * @param options - Options for error handling behavior
+ * @returns null if not throwing, never returns if throwing
+ */
+export function handleSupabaseError<T = null>(
+  error: unknown,
+  operation: string,
+  options?: { throw?: boolean; returnValue?: T; silent?: boolean }
+): T {
+  const message = `Failed to ${operation}: ${(error as Error)?.message || 'Unknown error'}`;
+
+  if (options?.throw) {
+    throw new Error(message);
+  }
+
+  if (!options?.silent) {
+    console.error(`[Supabase] ${message}`);
+  }
+
+  return (options?.returnValue ?? null) as T;
+}

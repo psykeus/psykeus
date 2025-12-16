@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getUser, isAdmin } from "@/lib/auth";
-import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from "@/lib/rate-limit";
 import { updateDesignSchema, formatZodError } from "@/lib/validations";
 import type { IdRouteParams } from "@/lib/types";
 import { z } from "zod";
+import {
+  validateRateLimit,
+  validateParams,
+  parseJsonBody,
+  forbiddenResponse,
+  notFoundResponse,
+  handleDbError,
+} from "@/lib/api/helpers";
 
 const paramsSchema = z.object({
   id: z.string().uuid(),
@@ -15,32 +22,16 @@ export async function GET(request: NextRequest, { params }: IdRouteParams) {
   const user = await getUser();
 
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
-  // Rate limiting
-  const identifier = getClientIdentifier(request, user.id);
-  const rateLimit = checkRateLimit(identifier, RATE_LIMITS.admin);
+  const rateLimit = validateRateLimit(request, user.id, "admin");
+  if (!rateLimit.success) return rateLimit.response!;
 
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: "Rate limit exceeded" },
-      { status: 429, headers: rateLimit.headers }
-    );
-  }
+  const paramsResult = await validateParams(params, paramsSchema, rateLimit.headers);
+  if (!paramsResult.success) return paramsResult.response!;
 
-  // Validate params
-  const rawParams = await params;
-  const validation = paramsSchema.safeParse(rawParams);
-
-  if (!validation.success) {
-    return NextResponse.json(
-      { error: "Invalid design ID" },
-      { status: 400, headers: rateLimit.headers }
-    );
-  }
-
-  const { id } = validation.data;
+  const { id } = paramsResult.data!;
   const supabase = createServiceClient();
 
   const { data: design, error } = await supabase
@@ -72,10 +63,7 @@ export async function GET(request: NextRequest, { params }: IdRouteParams) {
     .single();
 
   if (error || !design) {
-    return NextResponse.json(
-      { error: "Design not found" },
-      { status: 404, headers: rateLimit.headers }
-    );
+    return notFoundResponse("Design", rateLimit.headers);
   }
 
   return NextResponse.json({ design }, { headers: rateLimit.headers });
@@ -86,43 +74,19 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
   const user = await getUser();
 
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
-  // Rate limiting
-  const identifier = getClientIdentifier(request, user.id);
-  const rateLimit = checkRateLimit(identifier, RATE_LIMITS.admin);
+  const rateLimit = validateRateLimit(request, user.id, "admin");
+  if (!rateLimit.success) return rateLimit.response!;
 
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: "Rate limit exceeded" },
-      { status: 429, headers: rateLimit.headers }
-    );
-  }
+  const paramsResult = await validateParams(params, paramsSchema, rateLimit.headers);
+  if (!paramsResult.success) return paramsResult.response!;
 
-  // Validate params
-  const rawParams = await params;
-  const paramsValidation = paramsSchema.safeParse(rawParams);
+  const { id } = paramsResult.data!;
 
-  if (!paramsValidation.success) {
-    return NextResponse.json(
-      { error: "Invalid design ID" },
-      { status: 400, headers: rateLimit.headers }
-    );
-  }
-
-  const { id } = paramsValidation.data;
-
-  // Validate body
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { error: "Invalid JSON body" },
-      { status: 400, headers: rateLimit.headers }
-    );
-  }
+  const bodyResult = await parseJsonBody(request, rateLimit.headers);
+  if (!bodyResult.success) return bodyResult.response!;
 
   // Extended schema for admin updates (includes some extra fields)
   const adminUpdateSchema = updateDesignSchema.extend({
@@ -135,7 +99,7 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
     unpublish_at: z.string().datetime().nullable().optional(),
   });
 
-  const validation = adminUpdateSchema.safeParse(body);
+  const validation = adminUpdateSchema.safeParse(bodyResult.data);
 
   if (!validation.success) {
     return NextResponse.json(
@@ -166,11 +130,7 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
     .single();
 
   if (error) {
-    console.error("Error updating design:", error);
-    return NextResponse.json(
-      { error: "Failed to update design" },
-      { status: 500, headers: rateLimit.headers }
-    );
+    return handleDbError(error, "update design", rateLimit.headers);
   }
 
   return NextResponse.json({ design }, { headers: rateLimit.headers });
@@ -181,32 +141,16 @@ export async function DELETE(request: NextRequest, { params }: IdRouteParams) {
   const user = await getUser();
 
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
-  // Rate limiting
-  const identifier = getClientIdentifier(request, user.id);
-  const rateLimit = checkRateLimit(identifier, RATE_LIMITS.admin);
+  const rateLimit = validateRateLimit(request, user.id, "admin");
+  if (!rateLimit.success) return rateLimit.response!;
 
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: "Rate limit exceeded" },
-      { status: 429, headers: rateLimit.headers }
-    );
-  }
+  const paramsResult = await validateParams(params, paramsSchema, rateLimit.headers);
+  if (!paramsResult.success) return paramsResult.response!;
 
-  // Validate params
-  const rawParams = await params;
-  const validation = paramsSchema.safeParse(rawParams);
-
-  if (!validation.success) {
-    return NextResponse.json(
-      { error: "Invalid design ID" },
-      { status: 400, headers: rateLimit.headers }
-    );
-  }
-
-  const { id } = validation.data;
+  const { id } = paramsResult.data!;
   const supabase = createServiceClient();
 
   const { searchParams } = new URL(request.url);
@@ -217,11 +161,7 @@ export async function DELETE(request: NextRequest, { params }: IdRouteParams) {
     const { error } = await supabase.from("designs").delete().eq("id", id);
 
     if (error) {
-      console.error("Error deleting design:", error);
-      return NextResponse.json(
-        { error: "Failed to delete design" },
-        { status: 500, headers: rateLimit.headers }
-      );
+      return handleDbError(error, "delete design", rateLimit.headers);
     }
 
     return NextResponse.json(
@@ -236,11 +176,7 @@ export async function DELETE(request: NextRequest, { params }: IdRouteParams) {
       .eq("id", id);
 
     if (error) {
-      console.error("Error archiving design:", error);
-      return NextResponse.json(
-        { error: "Failed to archive design" },
-        { status: 500, headers: rateLimit.headers }
-      );
+      return handleDbError(error, "archive design", rateLimit.headers);
     }
 
     return NextResponse.json(

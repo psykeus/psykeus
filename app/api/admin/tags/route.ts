@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getUser, isAdmin } from "@/lib/auth";
+import { forbiddenResponse, handleDbError } from "@/lib/api/helpers";
 
 // GET - Get all tags with usage count
 export async function GET() {
@@ -8,7 +9,7 @@ export async function GET() {
   const user = await getUser();
 
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   const { data: tags, error } = await supabase
@@ -21,8 +22,7 @@ export async function GET() {
     .order("name");
 
   if (error) {
-    console.error("Error fetching tags:", error);
-    return NextResponse.json({ error: "Failed to fetch tags" }, { status: 500 });
+    return handleDbError(error, "fetch tags");
   }
 
   // Transform to include count
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
   const user = await getUser();
 
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   const { name } = await request.json();
@@ -84,8 +84,7 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    console.error("Error creating tag:", error);
-    return NextResponse.json({ error: "Failed to create tag" }, { status: 500 });
+    return handleDbError(error, "create tag");
   }
 
   return NextResponse.json({ tag: newTag, created: true });

@@ -4,6 +4,7 @@ import { getUser } from "@/lib/auth";
 import { isFavoritesEnabled, getFavoritesConfig } from "@/lib/feature-flags";
 import { favoriteParamsSchema, formatZodError } from "@/lib/validations";
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from "@/lib/rate-limit";
+import { featureDisabledResponse, handleDbError } from "@/lib/api/helpers";
 
 interface RouteParams {
   params: Promise<{ designId: string }>;
@@ -16,10 +17,7 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   // Check if feature is enabled
   if (!(await isFavoritesEnabled())) {
-    return NextResponse.json(
-      { error: "Favorites feature is disabled" },
-      { status: 403 }
-    );
+    return featureDisabledResponse("Favorites");
   }
 
   // Validate params
@@ -82,10 +80,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   // Check if feature is enabled
   if (!(await isFavoritesEnabled())) {
-    return NextResponse.json(
-      { error: "Favorites feature is disabled" },
-      { status: 403 }
-    );
+    return featureDisabledResponse("Favorites");
   }
 
   // Validate params
@@ -168,11 +163,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    console.error("Error adding favorite:", error.message, error.code, error.details, error.hint);
-    return NextResponse.json(
-      { error: error.message || "Failed to add favorite" },
-      { status: 500, headers: rateLimit.headers }
-    );
+    return handleDbError(error, "add favorite", rateLimit.headers);
   }
 
   // Get updated count
@@ -194,10 +185,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   // Check if feature is enabled
   if (!(await isFavoritesEnabled())) {
-    return NextResponse.json(
-      { error: "Favorites feature is disabled" },
-      { status: 403 }
-    );
+    return featureDisabledResponse("Favorites");
   }
 
   // Validate params
@@ -240,11 +228,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     .eq("design_id", designId);
 
   if (error) {
-    console.error("Error removing favorite:", error);
-    return NextResponse.json(
-      { error: "Failed to remove favorite" },
-      { status: 500, headers: rateLimit.headers }
-    );
+    return handleDbError(error, "remove favorite", rateLimit.headers);
   }
 
   // Get updated count

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getUser, isAdmin } from "@/lib/auth";
 import * as jobService from "@/lib/services/import-job-service";
+import { forbiddenResponse, notFoundResponse, handleDbError } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,7 @@ interface RouteParams {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   try {
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const job = await jobService.getImportJob(jobId);
 
     if (!job) {
-      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+      return notFoundResponse("Job");
     }
 
     // Don't allow undoing active jobs
@@ -137,10 +138,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       deleted_count: designIds.length,
     });
   } catch (error) {
-    console.error("Undo import error:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to undo import" },
-      { status: 500 }
-    );
+    return handleDbError(error, "undo import");
   }
 }

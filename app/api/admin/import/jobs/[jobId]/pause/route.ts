@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUser, isAdmin } from "@/lib/auth";
 import * as jobService from "@/lib/services/import-job-service";
 import { pauseJob as pauseProcessor } from "@/lib/import/job-processor";
+import { forbiddenResponse, handleDbError } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,7 @@ interface RouteParams {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   try {
@@ -34,8 +35,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       job,
     });
   } catch (error) {
-    console.error("Pause job error:", error);
-    const message = error instanceof Error ? error.message : "Failed to pause job";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return handleDbError(error, "pause job");
   }
 }

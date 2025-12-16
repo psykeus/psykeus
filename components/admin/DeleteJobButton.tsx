@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Trash2, Loader2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { Spinner } from "@/components/ui/loading-states";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,11 +58,7 @@ export function DeleteJobButton({ jobId, disabled }: DeleteJobButtonProps) {
           disabled={disabled || isDeleting}
           className="text-destructive hover:text-destructive hover:bg-destructive/10"
         >
-          {isDeleting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Trash2 className="h-4 w-4" />
-          )}
+          {isDeleting ? <Spinner size="sm" /> : <Trash2 className="h-4 w-4" />}
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -80,7 +77,7 @@ export function DeleteJobButton({ jobId, disabled }: DeleteJobButtonProps) {
           >
             {isDeleting ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Spinner size="sm" className="mr-2" />
                 Deleting...
               </>
             ) : (

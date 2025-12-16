@@ -17,8 +17,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Loader2, Save, RotateCcw, Plus, X, AlertCircle, CheckCircle, Eye
+  Save, RotateCcw, Plus, X, AlertCircle, CheckCircle, Eye
 } from "lucide-react";
+import { PageLoading, Spinner } from "@/components/ui/loading-states";
+import { ErrorCard, InlineError } from "@/components/ui/error-states";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { AIConfig, DisplaySettings } from "@/lib/ai-config";
 
@@ -160,27 +162,16 @@ export function AISettingsForm() {
   };
 
   if (loading) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
+    return <PageLoading message="Loading AI configuration..." />;
   }
 
   if (!config) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <AlertCircle className="h-8 w-8 mx-auto text-destructive mb-2" />
-          <p className="text-destructive">{error || "Failed to load configuration"}</p>
-          <Button variant="outline" onClick={loadConfig} className="mt-4">
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Retry
-          </Button>
-        </CardContent>
-      </Card>
+      <ErrorCard
+        title="Failed to load configuration"
+        message={error || "Unable to load AI settings"}
+        onRetry={loadConfig}
+      />
     );
   }
 
@@ -543,7 +534,7 @@ export function AISettingsForm() {
           </Button>
           <Button onClick={saveConfig} disabled={saving || !hasChanges}>
             {saving ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Spinner size="sm" className="mr-2" />
             ) : (
               <Save className="h-4 w-4 mr-2" />
             )}

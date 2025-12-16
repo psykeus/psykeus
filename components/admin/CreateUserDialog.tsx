@@ -20,7 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, UserPlus, AlertCircle, CheckCircle } from "lucide-react";
+import { UserPlus, AlertCircle, CheckCircle } from "lucide-react";
+import { Spinner } from "@/components/ui/loading-states";
 import type { AccessTier } from "@/lib/types";
 
 interface Props {
@@ -194,12 +195,16 @@ export function CreateUserDialog({ tiers, onUserCreated }: Props) {
 
           <div className="space-y-2">
             <Label htmlFor="tier">Access Tier</Label>
-            <Select value={tierId} onValueChange={setTierId} disabled={loading}>
+            <Select
+              value={tierId || "__none__"}
+              onValueChange={(val) => setTierId(val === "__none__" ? "" : val)}
+              disabled={loading}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select tier (optional)" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Default (Free)</SelectItem>
+                <SelectItem value="__none__">Default (Free)</SelectItem>
                 {tiers.map((tier) => (
                   <SelectItem key={tier.id} value={tier.id}>
                     {tier.name}
@@ -216,7 +221,7 @@ export function CreateUserDialog({ tiers, onUserCreated }: Props) {
             <Button type="submit" disabled={loading || !email}>
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Spinner size="sm" className="mr-2" />
                   Creating...
                 </>
               ) : (

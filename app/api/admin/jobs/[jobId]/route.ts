@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser, isAdmin } from "@/lib/auth";
 import { jobQueue } from "@/lib/jobs/queue";
+import { forbiddenResponse, notFoundResponse } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -18,10 +19,10 @@ interface RouteParams {
  * GET /api/admin/jobs/[jobId]
  * Returns job status and details
  */
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams) {
   const user = await getUser();
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
   const { jobId } = await params;
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const job = await jobQueue.getJob(jobId);
 
   if (!job) {
-    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    return notFoundResponse("Job");
   }
 
   const state = await job.getState();

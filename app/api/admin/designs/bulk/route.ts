@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getUser, isAdmin } from "@/lib/auth";
 import { z } from "zod";
+import { parseJsonBody, forbiddenResponse, handleDbError } from "@/lib/api/helpers";
 
 // Increased limit to support bulk operations on all designs
 // Operations are batched internally for database efficiency
@@ -17,17 +18,13 @@ export async function POST(request: NextRequest) {
   const user = await getUser();
 
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const bodyResult = await parseJsonBody(request);
+  if (!bodyResult.success) return bodyResult.response!;
 
-  const validation = bulkActionSchema.safeParse(body);
+  const validation = bulkActionSchema.safeParse(bodyResult.data);
   if (!validation.success) {
     return NextResponse.json(
       { error: "Invalid request", details: validation.error.issues },

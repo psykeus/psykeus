@@ -6,13 +6,14 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { getUser, isAdmin } from "@/lib/auth";
 import { getImportJob } from "@/lib/services/import-job-service";
 import {
   scheduleImportJob,
   clearImportSchedule,
 } from "@/lib/services/scheduled-import-service";
 import type { ScheduleImportOptions } from "@/lib/types/import";
+import { forbiddenResponse, notFoundResponse, handleDbError } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -25,8 +26,12 @@ interface RouteParams {
  * Schedule a pending import job for later execution
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
+  const user = await getUser();
+  if (!user || !isAdmin(user)) {
+    return forbiddenResponse("Admin access required");
+  }
+
   try {
-    await requireAdmin();
     const { jobId } = await params;
 
     // Parse request body
@@ -71,7 +76,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Check if job exists and is pending
     const job = await getImportJob(jobId);
     if (!job) {
-      return NextResponse.json({ error: "Import job not found" }, { status: 404 });
+      return notFoundResponse("Import job");
     }
     if (job.status !== "pending") {
       return NextResponse.json(
@@ -100,11 +105,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       message: `Job scheduled for ${result.scheduled_at}`,
     });
   } catch (error) {
-    console.error("[ScheduleAPI] Error scheduling job:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return handleDbError(error, "schedule job");
   }
 }
 
@@ -113,14 +114,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
  * Clear schedule from a pending import job
  */
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
+  const user = await getUser();
+  if (!user || !isAdmin(user)) {
+    return forbiddenResponse("Admin access required");
+  }
+
   try {
-    await requireAdmin();
     const { jobId } = await params;
 
     // Check if job exists
     const job = await getImportJob(jobId);
     if (!job) {
-      return NextResponse.json({ error: "Import job not found" }, { status: 404 });
+      return notFoundResponse("Import job");
     }
 
     // Only pending jobs can have schedule cleared
@@ -146,10 +151,6 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
       message: "Schedule cleared",
     });
   } catch (error) {
-    console.error("[ScheduleAPI] Error clearing schedule:", error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Internal server error" },
-      { status: 500 }
-    );
+    return handleDbError(error, "clear schedule");
   }
 }

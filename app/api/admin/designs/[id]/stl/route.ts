@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getUser, isAdmin } from "@/lib/auth";
+import { forbiddenResponse, notFoundResponse, handleDbError } from "@/lib/api/helpers";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -9,12 +10,13 @@ interface RouteParams {
 // GET - Get signed URL for STL file viewing (admin - bypasses is_public check)
 export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params;
-  const supabase = createServiceClient();
   const user = await getUser();
 
   if (!user || !isAdmin(user)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    return forbiddenResponse("Admin access required");
   }
+
+  const supabase = createServiceClient();
 
   // Get the design with its active file
   const { data: design, error: designError } = await supabase
@@ -32,7 +34,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     .single();
 
   if (designError || !design) {
-    return NextResponse.json({ error: "Design not found" }, { status: 404 });
+    return notFoundResponse("Design");
   }
 
   // Find the active STL file
@@ -46,7 +48,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const activeFile = files.find(f => f.is_active && f.file_type === "stl");
 
   if (!activeFile) {
-    return NextResponse.json({ error: "No active STL file found" }, { status: 404 });
+    return notFoundResponse("Active STL file");
   }
 
   // Generate signed URL for the STL file (valid for 1 hour)
@@ -55,8 +57,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     .createSignedUrl(activeFile.storage_path, 3600);
 
   if (urlError || !signedUrl) {
-    console.error("Error generating signed URL:", urlError);
-    return NextResponse.json({ error: "Failed to generate URL" }, { status: 500 });
+    return handleDbError(urlError, "generate signed URL");
   }
 
   return NextResponse.json({ url: signedUrl.signedUrl });

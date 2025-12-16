@@ -119,6 +119,7 @@ export function ImportWizard() {
       setStep("review");
     } catch (err) {
       setScanError(err instanceof Error ? err.message : "Unknown error");
+      setStep("source"); // Go back to source step to show error
     } finally {
       setIsScanning(false);
     }

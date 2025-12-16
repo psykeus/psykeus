@@ -5,6 +5,7 @@ import * as THREE from "three";
 import { OrbitControls, STLLoader, OBJLoader, GLTFLoader } from "three-stdlib";
 import { ThreeMFLoader } from "three/examples/jsm/loaders/3MFLoader.js";
 import { Spinner } from "@/components/ui/loading-states";
+import { InlineError } from "@/components/ui/error-states";
 
 export type ModelType = "stl" | "obj" | "gltf" | "glb" | "3mf";
 
@@ -509,8 +510,8 @@ export default function ModelViewer({
 
       {/* Error message */}
       {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-destructive/10 rounded-lg">
-          <span className="text-sm text-destructive">{error}</span>
+        <div className="absolute inset-0 flex items-center justify-center bg-destructive/10 rounded-lg p-4">
+          <InlineError message={error} />
         </div>
       )}
 

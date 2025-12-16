@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Eye, MoreVertical, FileIcon } from "lucide-react";
 import { Spinner } from "@/components/ui/loading-states";
+import { InlineError } from "@/components/ui/error-states";
 import type { DesignFile, FileRole } from "@/lib/types";
 import {
   canPreview,
@@ -523,8 +524,8 @@ export function AdminFileManager({
             )}
 
             {previewError && (
-              <div className="absolute inset-0 flex items-center justify-center text-destructive">
-                {previewError}
+              <div className="absolute inset-0 flex items-center justify-center p-4">
+                <InlineError message={previewError} />
               </div>
             )}
 

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Eye, Download, FileIcon, Layers, Copy } from "lucide-react";
 import { Spinner } from "@/components/ui/loading-states";
+import { InlineError } from "@/components/ui/error-states";
 import type { DesignFile } from "@/lib/types";
 import {
   canPreview,
@@ -443,8 +444,8 @@ export function DesignFileList({
             )}
 
             {previewError && (
-              <div className="absolute inset-0 flex items-center justify-center text-destructive">
-                {previewError}
+              <div className="absolute inset-0 flex items-center justify-center p-4">
+                <InlineError message={previewError} />
               </div>
             )}
 

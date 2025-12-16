@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls, STLLoader, OBJLoader, GLTFLoader } from "three-stdlib";
 import { ThreeMFLoader } from "three/examples/jsm/loaders/3MFLoader.js";
+import { Spinner } from "@/components/ui/loading-states";
 
 export type ModelType = "stl" | "obj" | "gltf" | "glb" | "3mf";
 
@@ -480,7 +481,7 @@ export default function ModelViewer({
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/80 rounded-lg">
           <div className="flex flex-col items-center gap-3 w-48">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <Spinner size="lg" />
             <div className="w-full space-y-1">
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Eye, Download, FileIcon, Layers, Copy } from "lucide-react";
+import { Spinner } from "@/components/ui/loading-states";
 import type { DesignFile } from "@/lib/types";
 import {
   canPreview,
@@ -437,7 +438,7 @@ export function DesignFileList({
           <div className="relative w-full h-[60vh] bg-muted">
             {previewLoading && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <Spinner size="lg" />
               </div>
             )}
 

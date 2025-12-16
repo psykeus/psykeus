@@ -6,6 +6,7 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { formatDate, formatBytes } from "@/lib/utils";
 import { AdminFileManager } from "@/components/AdminFileManager";
+import { Spinner } from "@/components/ui/loading-states";
 import type { Design, DesignFile } from "@/lib/types";
 
 // Dynamically import ModelViewer to avoid SSR issues with Three.js
@@ -542,7 +543,7 @@ export default function AdminDesignEditPage() {
                 {loadingPreview && (
                   <div className="absolute inset-0 flex items-center justify-center bg-muted z-10">
                     <div className="flex flex-col items-center gap-2">
-                      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      <Spinner size="lg" />
                       <span className="text-sm text-muted-foreground">Loading preview...</span>
                     </div>
                   </div>
@@ -584,7 +585,7 @@ export default function AdminDesignEditPage() {
                 {loadingStl ? (
                   <div className="w-full h-full flex items-center justify-center">
                     <div className="flex flex-col items-center gap-2">
-                      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      <Spinner size="lg" />
                       <span className="text-sm text-muted-foreground">Loading model...</span>
                     </div>
                   </div>

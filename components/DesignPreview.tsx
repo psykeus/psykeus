@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import dynamic from "next/dynamic";
 import { AlertTriangle } from "lucide-react";
+import { Spinner } from "@/components/ui/loading-states";
 import type { ModelType } from "./ModelViewer";
 import {
   PREVIEW_SIZES,
@@ -211,7 +212,7 @@ export function DesignPreview({
           {loadingUrl ? (
             <div className="w-full h-full flex items-center justify-center">
               <div className="flex flex-col items-center gap-2">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <Spinner size="lg" />
                 <span className="text-sm text-muted-foreground">Loading model...</span>
               </div>
             </div>

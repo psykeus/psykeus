@@ -29,7 +29,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus, RefreshCw, Package, DollarSign } from "lucide-react";
+import { Plus, RefreshCw, Package, DollarSign } from "lucide-react";
+import { PageLoading, Spinner } from "@/components/ui/loading-states";
 
 interface StripePrice {
   id: string;
@@ -182,13 +183,7 @@ export function StripeProductsList() {
   };
 
   if (loading) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
+    return <PageLoading message="Loading Stripe products..." />;
   }
 
   return (
@@ -209,7 +204,7 @@ export function StripeProductsList() {
               disabled={refreshing}
             >
               {refreshing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Spinner size="sm" />
               ) : (
                 <RefreshCw className="h-4 w-4" />
               )}
@@ -262,7 +257,7 @@ export function StripeProductsList() {
                   >
                     {creatingProduct ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <Spinner size="sm" className="mr-2" />
                         Creating...
                       </>
                     ) : (
@@ -434,7 +429,7 @@ export function StripeProductsList() {
               >
                 {creatingPrice ? (
                   <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    <Spinner size="sm" className="mr-2" />
                     Creating...
                   </>
                 ) : (

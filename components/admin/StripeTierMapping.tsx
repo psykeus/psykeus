@@ -25,7 +25,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Save, CheckCircle, AlertCircle } from "lucide-react";
+import { Save, CheckCircle, AlertCircle } from "lucide-react";
+import { PageLoading, Spinner } from "@/components/ui/loading-states";
 
 interface TierMapping {
   tierId: string;
@@ -175,13 +176,7 @@ export function StripeTierMapping() {
   };
 
   if (loading) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
+    return <PageLoading message="Loading tier mappings..." />;
   }
 
   const paidTiers = mappings.filter((m) => m.tierSlug !== "free");
@@ -202,7 +197,7 @@ export function StripeTierMapping() {
           >
             {saving ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Spinner size="sm" className="mr-2" />
                 Saving...
               </>
             ) : (

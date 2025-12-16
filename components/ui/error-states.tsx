@@ -59,13 +59,22 @@ export function ErrorCard({
 interface InlineErrorProps {
   message: string;
   className?: string;
+  onDismiss?: () => void;
 }
 
-export function InlineError({ message, className }: InlineErrorProps) {
+export function InlineError({ message, className, onDismiss }: InlineErrorProps) {
   return (
     <div className={cn("flex items-center gap-2 text-destructive text-sm", className)}>
       <AlertCircle className="h-4 w-4 flex-shrink-0" />
-      <span>{message}</span>
+      <span className="flex-1">{message}</span>
+      {onDismiss && (
+        <button
+          onClick={onDismiss}
+          className="text-destructive/70 hover:text-destructive text-xs underline"
+        >
+          Dismiss
+        </button>
+      )}
     </div>
   );
 }

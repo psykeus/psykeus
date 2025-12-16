@@ -26,12 +26,12 @@ import {
   CheckCircle,
   XCircle,
   LogOut,
-  Loader2,
-  AlertCircle,
   Globe,
   User,
   ExternalLink,
 } from "lucide-react";
+import { PageLoading, Spinner } from "@/components/ui/loading-states";
+import { PageError } from "@/components/ui/error-states";
 
 interface UserDetailResponse {
   user: UserWithTier;
@@ -287,23 +287,16 @@ export function UserDetailClient({ userId }: Props) {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <PageLoading message="Loading user details..." />;
   }
 
   if (error || !data) {
     return (
-      <div className="text-center py-12">
-        <AlertCircle className="h-12 w-12 mx-auto text-destructive mb-4" />
-        <p className="text-destructive mb-4">{error || "User not found"}</p>
-        <Button variant="outline" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Go Back
-        </Button>
-      </div>
+      <PageError
+        title="Failed to load user"
+        message={error || "User not found"}
+        onRetry={fetchUser}
+      />
     );
   }
 
@@ -488,7 +481,7 @@ export function UserDetailClient({ userId }: Props) {
             <CardContent>
               {activityLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <Spinner size="md" />
                 </div>
               ) : activity.length === 0 ? (
                 <p className="text-center py-8 text-muted-foreground">No activity recorded</p>
@@ -525,7 +518,7 @@ export function UserDetailClient({ userId }: Props) {
             <CardContent>
               {downloadsLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <Spinner size="md" />
                 </div>
               ) : downloads.length === 0 ? (
                 <p className="text-center py-8 text-muted-foreground">No downloads yet</p>

@@ -42,6 +42,9 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
+import { PageLoading, Spinner } from "@/components/ui/loading-states";
+import { InlineError } from "@/components/ui/error-states";
+import { EmptyState } from "@/components/ui/empty-states";
 import type { Webhook as WebhookType, WebhookDelivery } from "@/lib/webhooks";
 
 interface WebhookStats {
@@ -315,13 +318,7 @@ export function WebhooksClient() {
   };
 
   if (loading) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
+    return <PageLoading message="Loading webhooks..." />;
   }
 
   if (!data?.enabled) {
@@ -344,20 +341,7 @@ export function WebhooksClient() {
   return (
     <div className="space-y-6">
       {error && (
-        <Card className="border-destructive">
-          <CardContent className="py-4 flex items-center gap-2 text-destructive">
-            <AlertCircle className="h-4 w-4" />
-            {error}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-auto"
-              onClick={() => setError(null)}
-            >
-              Dismiss
-            </Button>
-          </CardContent>
-        </Card>
+        <InlineError message={error} onDismiss={() => setError(null)} />
       )}
 
       {/* Stats */}
@@ -436,11 +420,11 @@ export function WebhooksClient() {
         </CardHeader>
         <CardContent>
           {data.webhooks.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Webhook className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No webhooks configured yet.</p>
-              <p className="text-sm">Click &quot;Add Webhook&quot; to create one.</p>
-            </div>
+            <EmptyState
+              icon={Webhook}
+              title="No webhooks configured"
+              description="Click 'Add Webhook' to create your first webhook endpoint."
+            />
           ) : (
             <div className="space-y-4">
               {data.webhooks.map((webhook) => (
@@ -501,7 +485,7 @@ export function WebhooksClient() {
                       disabled={testing === webhook.id || !webhook.is_active}
                     >
                       {testing === webhook.id ? (
-                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        <Spinner size="sm" />
                       ) : (
                         <Play className="h-4 w-4" />
                       )}

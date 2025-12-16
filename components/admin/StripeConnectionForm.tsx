@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, CheckCircle, XCircle, Eye, EyeOff } from "lucide-react";
+import { CheckCircle, XCircle, Eye, EyeOff } from "lucide-react";
+import { PageLoading, Spinner } from "@/components/ui/loading-states";
 
 interface StripeSettings {
   secretKey: string;
@@ -121,13 +122,7 @@ export function StripeConnectionForm() {
   };
 
   if (loading) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </CardContent>
-      </Card>
-    );
+    return <PageLoading message="Loading Stripe settings..." />;
   }
 
   return (
@@ -189,7 +184,7 @@ export function StripeConnectionForm() {
             >
               {testing ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Spinner size="sm" className="mr-2" />
                   Testing...
                 </>
               ) : (
@@ -309,7 +304,7 @@ export function StripeConnectionForm() {
         <Button onClick={handleSave} disabled={saving}>
           {saving ? (
             <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Spinner size="sm" className="mr-2" />
               Saving...
             </>
           ) : (

@@ -231,6 +231,46 @@ export async function isGcodePreviewEnabled(): Promise<boolean> {
 }
 
 /**
+ * Check if notifications feature is enabled
+ */
+export async function isNotificationsEnabled(): Promise<boolean> {
+  const flags = await getFeatureFlags();
+  return flags.notifications.enabled;
+}
+
+/**
+ * Get notifications configuration
+ */
+export async function getNotificationsConfig() {
+  const flags = await getFeatureFlags();
+  return flags.notifications;
+}
+
+/**
+ * Check if email feature is enabled
+ */
+export async function isEmailEnabled(): Promise<boolean> {
+  const flags = await getFeatureFlags();
+  return flags.email.enabled;
+}
+
+/**
+ * Get email configuration
+ */
+export async function getEmailConfig() {
+  const flags = await getFeatureFlags();
+  return flags.email;
+}
+
+/**
+ * Check if admin broadcasts feature is enabled
+ */
+export async function isAdminBroadcastsEnabled(): Promise<boolean> {
+  const flags = await getFeatureFlags();
+  return flags.adminBroadcasts.enabled;
+}
+
+/**
  * Get all enabled features as a list of feature names
  */
 export async function getEnabledFeatures(): Promise<string[]> {

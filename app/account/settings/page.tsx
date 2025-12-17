@@ -7,13 +7,13 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Camera,
-  Loader2,
   Save,
   Trash2,
   User,
   Globe,
   FileText,
 } from "lucide-react";
+import { Spinner, PageLoading } from "@/components/ui/loading-states";
 
 interface UserProfile {
   id: string;
@@ -183,13 +183,7 @@ export default function SettingsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </div>
-    );
+    return <PageLoading />;
   }
 
   if (!user) {
@@ -257,7 +251,7 @@ export default function SettingsPage() {
             )}
             {uploadingPhoto && (
               <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                <Loader2 className="h-6 w-6 text-white animate-spin" />
+                <Spinner size="md" className="text-white" />
               </div>
             )}
           </div>
@@ -403,7 +397,7 @@ export default function SettingsPage() {
           >
             {saving ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Spinner size="sm" />
                 Saving...
               </>
             ) : (

@@ -3,19 +3,31 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { formatDate } from "@/lib/utils";
-import type { UserWithTier, AccessTier, UserStatus } from "@/lib/types";
+import type { UserWithTier, AccessTier } from "@/lib/types";
 import { CreateUserDialog } from "@/components/admin/CreateUserDialog";
+import { UserExportDialog } from "@/components/admin/UserExportDialog";
 import { StatusBadge, RoleBadge, TierBadge } from "@/components/ui/status-badges";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Search,
   MoreVertical,
   Shield,
   Crown,
   Ban,
-  CheckCircle,
   XCircle,
   LogOut,
   Eye,
+  PauseCircle,
+  MinusCircle,
+  Mail,
+  Play,
 } from "lucide-react";
 import { ClientPagination } from "@/components/Pagination";
 import { PageLoading } from "@/components/ui/loading-states";
@@ -51,6 +63,7 @@ export function UsersClient() {
   const [actionReason, setActionReason] = useState("");
   const [actionData, setActionData] = useState<Record<string, string>>({});
   const [actionLoading, setActionLoading] = useState(false);
+
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -93,7 +106,7 @@ export function UsersClient() {
     try {
       const body: Record<string, unknown> = { action: modalAction };
 
-      if (modalAction === "suspend" || modalAction === "ban") {
+      if (["suspend", "ban", "pause", "disable"].includes(modalAction)) {
         body.reason = actionReason;
       } else if (modalAction === "update_tier") {
         body.tier_id = actionData.tier_id;
@@ -153,8 +166,9 @@ export function UsersClient() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Create Button */}
-      <div className="flex justify-end">
+      {/* Header with Create and Export Buttons */}
+      <div className="flex justify-end gap-2">
+        <UserExportDialog />
         <CreateUserDialog tiers={data?.tiers || []} onUserCreated={fetchUsers} />
       </div>
 
@@ -185,6 +199,8 @@ export function UsersClient() {
             >
               <option value="">All Status</option>
               <option value="active">Active</option>
+              <option value="paused">Paused</option>
+              <option value="disabled">Disabled</option>
               <option value="suspended">Suspended</option>
               <option value="banned">Banned</option>
             </select>
@@ -309,67 +325,91 @@ export function UsersClient() {
                       >
                         <Eye className="h-4 w-4" />
                       </Link>
-                      <div className="relative group">
-                        <button className="p-2 hover:bg-secondary rounded-md">
-                          <MoreVertical className="h-4 w-4" />
-                        </button>
-                        <div className="absolute right-0 top-full mt-1 w-48 bg-card border rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                          <div className="py-1">
-                            {user.role !== "super_admin" && (
+                      {user.role !== "super_admin" && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="p-2 hover:bg-secondary rounded-md">
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-52">
+                            {/* Account Management */}
+                            <DropdownMenuLabel className="text-xs uppercase tracking-wider text-muted-foreground">
+                              Account
+                            </DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => openModal(user, "update_tier")}>
+                              <Crown className="h-4 w-4 mr-2" />
+                              Change Tier
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openModal(user, "update_role")}>
+                              <Shield className="h-4 w-4 mr-2" />
+                              Change Role
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+
+                            {/* Security Actions */}
+                            <DropdownMenuLabel className="text-xs uppercase tracking-wider text-muted-foreground">
+                              Security
+                            </DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => openModal(user, "send_password_reset")}>
+                              <Mail className="h-4 w-4 mr-2" />
+                              Send Password Reset
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openModal(user, "force_logout")}>
+                              <LogOut className="h-4 w-4 mr-2" />
+                              Force Logout
+                            </DropdownMenuItem>
+
+                            <DropdownMenuSeparator />
+
+                            {/* Status Actions */}
+                            <DropdownMenuLabel className="text-xs uppercase tracking-wider text-muted-foreground">
+                              Status
+                            </DropdownMenuLabel>
+                            {user.status === "active" ? (
                               <>
-                                <button
-                                  onClick={() => openModal(user, "update_tier")}
-                                  className="w-full px-4 py-2 text-left text-sm hover:bg-secondary flex items-center gap-2"
+                                <DropdownMenuItem
+                                  onClick={() => openModal(user, "pause")}
+                                  className="text-blue-600"
                                 >
-                                  <Crown className="h-4 w-4" />
-                                  Change Tier
-                                </button>
-                                <button
-                                  onClick={() => openModal(user, "update_role")}
-                                  className="w-full px-4 py-2 text-left text-sm hover:bg-secondary flex items-center gap-2"
+                                  <PauseCircle className="h-4 w-4 mr-2" />
+                                  Pause Account
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => openModal(user, "disable")}
+                                  className="text-gray-600"
                                 >
-                                  <Shield className="h-4 w-4" />
-                                  Change Role
-                                </button>
-                                <hr className="my-1" />
-                                <button
-                                  onClick={() => openModal(user, "force_logout")}
-                                  className="w-full px-4 py-2 text-left text-sm hover:bg-secondary flex items-center gap-2"
+                                  <MinusCircle className="h-4 w-4 mr-2" />
+                                  Disable Account
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => openModal(user, "suspend")}
+                                  className="text-amber-600"
                                 >
-                                  <LogOut className="h-4 w-4" />
-                                  Force Logout
-                                </button>
-                                {user.status === "active" ? (
-                                  <>
-                                    <button
-                                      onClick={() => openModal(user, "suspend")}
-                                      className="w-full px-4 py-2 text-left text-sm hover:bg-secondary text-amber-600 flex items-center gap-2"
-                                    >
-                                      <XCircle className="h-4 w-4" />
-                                      Suspend
-                                    </button>
-                                    <button
-                                      onClick={() => openModal(user, "ban")}
-                                      className="w-full px-4 py-2 text-left text-sm hover:bg-secondary text-red-600 flex items-center gap-2"
-                                    >
-                                      <Ban className="h-4 w-4" />
-                                      Ban
-                                    </button>
-                                  </>
-                                ) : (
-                                  <button
-                                    onClick={() => openModal(user, "unsuspend")}
-                                    className="w-full px-4 py-2 text-left text-sm hover:bg-secondary text-green-600 flex items-center gap-2"
-                                  >
-                                    <CheckCircle className="h-4 w-4" />
-                                    Activate
-                                  </button>
-                                )}
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  Suspend Account
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => openModal(user, "ban")}
+                                  className="text-red-600"
+                                >
+                                  <Ban className="h-4 w-4 mr-2" />
+                                  Ban Account
+                                </DropdownMenuItem>
                               </>
+                            ) : (
+                              <DropdownMenuItem
+                                onClick={() => openModal(user, "activate")}
+                                className="text-green-600"
+                              >
+                                <Play className="h-4 w-4 mr-2" />
+                                Activate Account
+                              </DropdownMenuItem>
                             )}
-                          </div>
-                        </div>
-                      </div>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -401,31 +441,58 @@ export function UsersClient() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-card border rounded-lg p-6 max-w-md w-full mx-4">
             <h2 className="text-xl font-semibold mb-4">
-              {modalAction === "suspend" && "Suspend User"}
-              {modalAction === "unsuspend" && "Activate User"}
-              {modalAction === "ban" && "Ban User"}
+              {modalAction === "pause" && "Pause User Account"}
+              {modalAction === "unpause" && "Unpause User Account"}
+              {modalAction === "disable" && "Disable User Account"}
+              {modalAction === "enable" && "Enable User Account"}
+              {modalAction === "suspend" && "Suspend User Account"}
+              {modalAction === "activate" && "Activate User Account"}
+              {modalAction === "ban" && "Ban User Account"}
               {modalAction === "update_tier" && "Change Subscription Tier"}
               {modalAction === "update_role" && "Change Role"}
               {modalAction === "force_logout" && "Force Logout"}
+              {modalAction === "send_password_reset" && "Send Password Reset"}
             </h2>
 
             <p className="text-muted-foreground mb-4">
               User: <strong>{selectedUser.email}</strong>
             </p>
 
-            {(modalAction === "suspend" || modalAction === "ban") && (
+            {/* Status change reasons */}
+            {["suspend", "ban", "pause", "disable"].includes(modalAction || "") && (
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">
-                  Reason <span className="text-red-500">*</span>
+                  Reason {["suspend", "ban"].includes(modalAction || "") && <span className="text-red-500">*</span>}
                 </label>
                 <textarea
                   value={actionReason}
                   onChange={(e) => setActionReason(e.target.value)}
                   className="w-full px-3 py-2 border rounded-md bg-background"
                   rows={3}
-                  placeholder="Enter reason for this action..."
-                  required
+                  placeholder={
+                    modalAction === "pause"
+                      ? "e.g., User requested vacation hold"
+                      : modalAction === "disable"
+                      ? "e.g., Account inactive or duplicate"
+                      : "Enter reason for this action..."
+                  }
+                  required={["suspend", "ban"].includes(modalAction || "")}
                 />
+                {modalAction === "pause" && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pause is for user-requested temporary holds (e.g., vacation)
+                  </p>
+                )}
+                {modalAction === "disable" && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Disable is admin-initiated and permanent until re-enabled
+                  </p>
+                )}
+                {modalAction === "suspend" && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Suspend is for policy violations - user will be logged out
+                  </p>
+                )}
               </div>
             )}
 
@@ -497,9 +564,21 @@ export function UsersClient() {
               </div>
             )}
 
-            {modalAction === "unsuspend" && (
+            {modalAction === "activate" && (
               <p className="mb-4 text-sm">
-                This will restore the user's access to their account.
+                This will restore the user's account to active status and clear any suspension/pause/disable flags.
+              </p>
+            )}
+
+            {modalAction === "unpause" && (
+              <p className="mb-4 text-sm">
+                This will restore the user's account from paused status.
+              </p>
+            )}
+
+            {modalAction === "enable" && (
+              <p className="mb-4 text-sm">
+                This will re-enable the disabled user account.
               </p>
             )}
 
@@ -507,6 +586,22 @@ export function UsersClient() {
               <p className="mb-4 text-sm">
                 This will log the user out from all devices immediately.
               </p>
+            )}
+
+            {modalAction === "send_password_reset" && (
+              <p className="mb-4 text-sm">
+                This will send a password reset email to <strong>{selectedUser.email}</strong>.
+                The user will receive a link to set a new password.
+              </p>
+            )}
+
+            {modalAction === "ban" && (
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                <p className="text-sm text-red-700 dark:text-red-400">
+                  <strong>Warning:</strong> Banning is permanent and can only be reversed by a super admin.
+                  The user will be immediately logged out.
+                </p>
+              </div>
             )}
 
             <div className="flex gap-3 justify-end">
@@ -524,8 +619,7 @@ export function UsersClient() {
                 onClick={handleAction}
                 disabled={
                   actionLoading ||
-                  ((modalAction === "suspend" || modalAction === "ban") &&
-                    !actionReason) ||
+                  (["suspend", "ban"].includes(modalAction || "") && !actionReason) ||
                   (modalAction === "update_tier" && !actionData.tier_id)
                 }
                 className={`px-4 py-2 rounded-md text-white disabled:opacity-50 ${
@@ -533,6 +627,12 @@ export function UsersClient() {
                     ? "bg-red-600 hover:bg-red-700"
                     : modalAction === "suspend"
                     ? "bg-amber-600 hover:bg-amber-700"
+                    : modalAction === "disable"
+                    ? "bg-gray-600 hover:bg-gray-700"
+                    : modalAction === "pause"
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : ["activate", "enable", "unpause"].includes(modalAction || "")
+                    ? "bg-green-600 hover:bg-green-700"
                     : "bg-primary hover:bg-primary/90"
                 }`}
               >

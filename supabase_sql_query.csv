@@ -1,0 +1,29 @@
+function_name,arguments,return_type,search_path_status
+can_user_access_design,"user_uuid uuid, design_uuid uuid",boolean,OK
+check_duplicate_hash,p_hash text,"TABLE(design_file_id uuid, design_id uuid, version_number integer)",OK
+check_user_download_limit,user_uuid uuid,"TABLE(can_download boolean, downloads_used integer, downloads_limit integer, reset_date timestamp with time zone)",OK
+cleanup_expired_sessions,,integer,OK
+cleanup_old_sessions,,integer,OK
+find_by_source_path,p_source_path text,"TABLE(design_file_id uuid, design_id uuid, content_hash text, version_number integer)",OK
+get_designs_by_tag,p_tag_name text,SETOF uuid,OK
+get_designs_to_publish,,SETOF designs,OK
+get_designs_to_unpublish,,SETOF designs,OK
+get_download_stats,,"TABLE(total_downloads bigint, unique_users bigint, downloads_today bigint, downloads_this_week bigint)",OK
+get_favorite_count,design_uuid uuid,integer,OK
+get_import_log_reasons,p_job_id uuid,"TABLE(status text, reason text, count bigint)",OK
+get_next_version_number,p_design_id uuid,integer,OK
+get_popular_designs,"p_start_date timestamp with time zone DEFAULT NULL::timestamp with time zone, p_limit integer DEFAULT 10","TABLE(id uuid, title text, slug text, preview_path text, categories text[], download_count bigint)",OK
+get_related_designs,"p_design_id uuid, p_categories text[], p_tag_ids uuid[], p_limit integer DEFAULT 10","TABLE(id uuid, slug text, title text, preview_path text, categories text[], difficulty text, style text, similarity integer)",MISSING
+get_related_designs,"p_design_slug text, p_limit integer DEFAULT 4","TABLE(id uuid, slug text, title text, preview_path text, difficulty text, categories text[], style text, relevance_score double precision)",OK
+get_user_collection_count,user_uuid uuid,integer,OK
+get_user_dashboard_stats,user_uuid uuid,"TABLE(total_downloads bigint, downloads_this_month bigint, favorite_count bigint, collection_count bigint)",OK
+handle_new_user,,trigger,OK
+is_admin,,boolean,OK
+is_favorited,"design_uuid uuid, user_uuid uuid",boolean,OK
+is_super_admin,,boolean,OK
+search_designs,"p_query text, p_limit integer DEFAULT 30, p_offset integer DEFAULT 0","TABLE(id uuid, slug text, title text, preview_path text, difficulty text, materials text[], categories text[], style text, rank real)",OK
+update_collection_timestamp,,trigger,OK
+update_import_job_updated_at,,trigger,OK
+update_updated_at,,trigger,OK
+update_user_timestamp,,trigger,OK
+validate_session_with_role,"p_session_token text, p_user_id uuid","TABLE(is_valid boolean, user_role text)",OK

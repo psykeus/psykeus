@@ -9,6 +9,8 @@ import {
   Crown,
   Clock,
   AlertCircle,
+  PauseCircle,
+  MinusCircle,
   type LucideIcon,
 } from "lucide-react";
 import type { UserStatus, AccessTier } from "@/lib/types";
@@ -60,6 +62,8 @@ interface StatusBadgeProps {
 
 const statusConfig: Record<UserStatus, { icon: LucideIcon; label: string; variant: BaseBadgeProps["variant"] }> = {
   active: { icon: CheckCircle, label: "Active", variant: "success" },
+  paused: { icon: PauseCircle, label: "Paused", variant: "info" },
+  disabled: { icon: MinusCircle, label: "Disabled", variant: "default" },
   suspended: { icon: XCircle, label: "Suspended", variant: "warning" },
   banned: { icon: Ban, label: "Banned", variant: "danger" },
 };

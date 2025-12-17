@@ -3,7 +3,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { DESIGN_EXTENSIONS, isSupportedExtension } from "@/lib/file-types";
-import { Loader2, CheckCircle, XCircle, Clock, Upload, X, FileIcon } from "lucide-react";
+import { CheckCircle, XCircle, Clock, Upload, X, FileIcon, Loader2 } from "lucide-react";
+import { Spinner } from "@/components/ui/loading-states";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -600,7 +601,7 @@ export function UploadForm() {
             >
               {isUploading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <Spinner size="sm" className="mr-2" />
                   Uploading...
                 </>
               ) : (

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { MobileNav } from "@/components/MobileNav";
+import { NotificationCenter } from "@/components/NotificationCenter";
 
 export async function Header() {
   const user = await getUser();
@@ -53,6 +54,8 @@ export async function Header() {
                   <Link href="/admin">Admin</Link>
                 </Button>
               )}
+              <Separator orientation="vertical" className="mx-2 h-6" />
+              <NotificationCenter userId={user.id} />
             </>
           ) : (
             <Button asChild>
@@ -66,6 +69,7 @@ export async function Header() {
 
         {/* Mobile Navigation */}
         <div className="flex items-center gap-2 md:hidden">
+          {user && <NotificationCenter userId={user.id} />}
           <ThemeToggle />
           <MobileNav isAuthenticated={!!user} isAdmin={userIsAdmin} />
         </div>

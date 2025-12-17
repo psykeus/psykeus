@@ -96,6 +96,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import type { DesignFile, DesignAccessLevel, DesignLicenseType } from "@/lib/types";
+import { is3DModelType } from "@/lib/preview-config";
 import { Crown, Lock, Shield } from "lucide-react";
 import { LicenseBadge, LicenseInfo } from "@/components/LicenseBadge";
 
@@ -194,6 +195,10 @@ export default async function DesignDetailPage({ params }: Props) {
   const designFiles = (allFiles || []) as DesignFile[];
   const hasMultipleFiles = designFiles.length > 1;
 
+  // Find first 3D model file if any (for showing 3D viewer toggle)
+  const threeDFile = designFiles.find((f) => f.file_type && is3DModelType(f.file_type));
+  const effectiveFileType = threeDFile?.file_type || currentFile?.file_type || null;
+
   // Only fetch similar designs if relatedDesigns feature is disabled (fallback)
   let similarDesigns: Array<{
     id: string;
@@ -236,7 +241,7 @@ export default async function DesignDetailPage({ params }: Props) {
             designSlug={slug}
             previewPath={design.preview_path}
             title={design.title}
-            fileType={currentFile?.file_type || null}
+            fileType={effectiveFileType}
           />
         </Card>
 

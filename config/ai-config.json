@@ -351,6 +351,18 @@
     },
     "gcodePreview": {
       "enabled": true
+    },
+    "notifications": {
+      "enabled": true,
+      "maxPerUser": 100,
+      "retentionDays": 30
+    },
+    "email": {
+      "enabled": true,
+      "queueEmails": false
+    },
+    "adminBroadcasts": {
+      "enabled": true
     }
   }
 }

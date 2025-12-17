@@ -2,7 +2,7 @@
 // Run: npm run db:types to regenerate
 
 export type UserRole = "user" | "admin" | "super_admin";
-export type UserStatus = "active" | "suspended" | "banned";
+export type UserStatus = "active" | "paused" | "disabled" | "suspended" | "banned";
 export type DesignAccessLevel = "free" | "premium" | "exclusive";
 export type DesignLicenseType =
   | "unknown"
@@ -25,9 +25,18 @@ export interface User {
   tier_id: string | null;
   tier_expires_at: string | null;
   status: UserStatus;
+  // Suspended state tracking
   suspended_reason: string | null;
   suspended_at: string | null;
   suspended_by: string | null;
+  // Paused state tracking (user-requested temporary hold)
+  paused_reason: string | null;
+  paused_at: string | null;
+  paused_by: string | null;
+  // Disabled state tracking (admin-disabled)
+  disabled_reason: string | null;
+  disabled_at: string | null;
+  disabled_by: string | null;
   last_login_at: string | null;
   login_count: number;
   profile_image_url: string | null;

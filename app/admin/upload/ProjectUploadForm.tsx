@@ -2,7 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, CheckCircle, XCircle, Upload, FolderOpen, FileIcon, X, GripVertical } from "lucide-react";
+import { CheckCircle, XCircle, Upload, FolderOpen, FileIcon, X, GripVertical } from "lucide-react";
+import { Spinner } from "@/components/ui/loading-states";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -439,7 +440,7 @@ export function ProjectUploadForm() {
       {status === "uploading" && (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <Spinner size="sm" />
             <span className="text-sm">{message}</span>
           </div>
           <Progress value={progress} className="h-2" />

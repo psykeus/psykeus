@@ -29,6 +29,10 @@ import {
   Globe,
   User,
   ExternalLink,
+  PauseCircle,
+  MinusCircle,
+  Play,
+  Key,
 } from "lucide-react";
 import { PageLoading, Spinner } from "@/components/ui/loading-states";
 import { PageError } from "@/components/ui/error-states";
@@ -159,7 +163,7 @@ export function UserDetailClient({ userId }: Props) {
     try {
       const body: Record<string, unknown> = { action: modalAction };
 
-      if (modalAction === "suspend" || modalAction === "ban") {
+      if (["suspend", "ban", "pause", "disable"].includes(modalAction)) {
         body.reason = actionReason;
       } else if (modalAction === "update_tier") {
         body.tier_id = actionData.tier_id;
@@ -206,6 +210,20 @@ export function UserDetailClient({ userId }: Props) {
           <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
             <CheckCircle className="h-3 w-3 mr-1" />
             Active
+          </Badge>
+        );
+      case "paused":
+        return (
+          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
+            <PauseCircle className="h-3 w-3 mr-1" />
+            Paused
+          </Badge>
+        );
+      case "disabled":
+        return (
+          <Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400">
+            <MinusCircle className="h-3 w-3 mr-1" />
+            Disabled
           </Badge>
         );
       case "suspended":
@@ -345,20 +363,9 @@ export function UserDetailClient({ userId }: Props) {
                   <Crown className="h-4 w-4 mr-2" />
                   Change Tier
                 </Button>
-                {user.status === "active" ? (
-                  <Button variant="outline" className="text-amber-600" onClick={() => openModal("suspend")}>
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Suspend
-                  </Button>
-                ) : (
-                  <Button variant="outline" className="text-green-600" onClick={() => openModal("unsuspend")}>
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Activate
-                  </Button>
-                )}
-                <Button variant="outline" onClick={() => openModal("force_logout")}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Force Logout
+                <Button variant="outline" onClick={() => openModal("update_role")}>
+                  <Shield className="h-4 w-4 mr-2" />
+                  Change Role
                 </Button>
               </div>
             )}
@@ -392,12 +399,40 @@ export function UserDetailClient({ userId }: Props) {
             )}
           </div>
 
-          {user.suspended_reason && (
-            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-              <p className="text-sm font-medium text-amber-800 dark:text-amber-400">
-                {user.status === "banned" ? "Ban" : "Suspension"} Reason:
+          {user.status !== "active" && (
+            <div className={`mt-4 p-3 rounded-lg ${
+              user.status === "banned" || user.status === "suspended"
+                ? "bg-amber-50 dark:bg-amber-900/20"
+                : user.status === "paused"
+                ? "bg-blue-50 dark:bg-blue-900/20"
+                : "bg-gray-50 dark:bg-gray-900/20"
+            }`}>
+              <p className={`text-sm font-medium ${
+                user.status === "banned" || user.status === "suspended"
+                  ? "text-amber-800 dark:text-amber-400"
+                  : user.status === "paused"
+                  ? "text-blue-800 dark:text-blue-400"
+                  : "text-gray-800 dark:text-gray-400"
+              }`}>
+                {user.status === "banned" && "Ban Reason:"}
+                {user.status === "suspended" && "Suspension Reason:"}
+                {user.status === "paused" && "Pause Reason:"}
+                {user.status === "disabled" && "Disable Reason:"}
               </p>
-              <p className="text-sm text-amber-700 dark:text-amber-300">{user.suspended_reason}</p>
+              <p className={`text-sm ${
+                user.status === "banned" || user.status === "suspended"
+                  ? "text-amber-700 dark:text-amber-300"
+                  : user.status === "paused"
+                  ? "text-blue-700 dark:text-blue-300"
+                  : "text-gray-700 dark:text-gray-300"
+              }`}>
+                {user.status === "banned" || user.status === "suspended"
+                  ? user.suspended_reason || "No reason provided"
+                  : user.status === "paused"
+                  ? user.paused_reason || "No reason provided"
+                  : user.disabled_reason || "No reason provided"
+                }
+              </p>
             </div>
           )}
         </CardContent>
@@ -447,6 +482,97 @@ export function UserDetailClient({ userId }: Props) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Actions Card */}
+      {user.role !== "super_admin" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Account Actions</CardTitle>
+            <CardDescription>Manage user account status and security</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Status Actions */}
+            <div>
+              <h4 className="text-sm font-medium mb-3">Status Actions</h4>
+              <div className="flex flex-wrap gap-2">
+                {user.status === "active" ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:hover:bg-blue-950"
+                      onClick={() => openModal("pause")}
+                    >
+                      <PauseCircle className="h-4 w-4 mr-2" />
+                      Pause Account
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-gray-600 border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-950"
+                      onClick={() => openModal("disable")}
+                    >
+                      <MinusCircle className="h-4 w-4 mr-2" />
+                      Disable Account
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-amber-600 border-amber-200 hover:bg-amber-50 dark:hover:bg-amber-950"
+                      onClick={() => openModal("suspend")}
+                    >
+                      <XCircle className="h-4 w-4 mr-2" />
+                      Suspend Account
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-red-600 border-red-200 hover:bg-red-50 dark:hover:bg-red-950"
+                      onClick={() => openModal("ban")}
+                    >
+                      <Ban className="h-4 w-4 mr-2" />
+                      Ban Account
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-green-600 border-green-200 hover:bg-green-50 dark:hover:bg-green-950"
+                    onClick={() => openModal("activate")}
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    Activate Account
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Security Actions */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-medium mb-3">Security Actions</h4>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openModal("send_password_reset")}
+                >
+                  <Key className="h-4 w-4 mr-2" />
+                  Send Password Reset
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openModal("force_logout")}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Force Logout All Sessions
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tabs */}
       <Tabs defaultValue="activity" className="space-y-4" onValueChange={(value) => {
@@ -589,9 +715,17 @@ export function UserDetailClient({ userId }: Props) {
 
         <TabsContent value="subscription">
           <Card>
-            <CardHeader>
-              <CardTitle>Subscription Details</CardTitle>
-              <CardDescription>Payment and subscription information</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Subscription Details</CardTitle>
+                <CardDescription>Payment and subscription information</CardDescription>
+              </div>
+              {user.role !== "super_admin" && (
+                <Button onClick={() => openModal("update_tier")}>
+                  <Crown className="h-4 w-4 mr-2" />
+                  Change Subscription
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -627,31 +761,58 @@ export function UserDetailClient({ userId }: Props) {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-card border rounded-lg p-6 max-w-md w-full mx-4">
             <h2 className="text-xl font-semibold mb-4">
-              {modalAction === "suspend" && "Suspend User"}
-              {modalAction === "unsuspend" && "Activate User"}
-              {modalAction === "ban" && "Ban User"}
+              {modalAction === "pause" && "Pause User Account"}
+              {modalAction === "unpause" && "Unpause User Account"}
+              {modalAction === "disable" && "Disable User Account"}
+              {modalAction === "enable" && "Enable User Account"}
+              {modalAction === "suspend" && "Suspend User Account"}
+              {modalAction === "activate" && "Activate User Account"}
+              {modalAction === "ban" && "Ban User Account"}
               {modalAction === "update_tier" && "Change Subscription Tier"}
               {modalAction === "update_role" && "Change Role"}
               {modalAction === "force_logout" && "Force Logout"}
+              {modalAction === "send_password_reset" && "Send Password Reset"}
             </h2>
 
             <p className="text-muted-foreground mb-4">
               User: <strong>{user.email}</strong>
             </p>
 
-            {(modalAction === "suspend" || modalAction === "ban") && (
+            {/* Status change reasons */}
+            {["suspend", "ban", "pause", "disable"].includes(modalAction || "") && (
               <div className="mb-4">
                 <label className="block text-sm font-medium mb-1">
-                  Reason <span className="text-red-500">*</span>
+                  Reason {["suspend", "ban"].includes(modalAction || "") && <span className="text-red-500">*</span>}
                 </label>
                 <textarea
                   value={actionReason}
                   onChange={(e) => setActionReason(e.target.value)}
                   className="w-full px-3 py-2 border rounded-md bg-background"
                   rows={3}
-                  placeholder="Enter reason for this action..."
-                  required
+                  placeholder={
+                    modalAction === "pause"
+                      ? "e.g., User requested vacation hold"
+                      : modalAction === "disable"
+                      ? "e.g., Account inactive or duplicate"
+                      : "Enter reason for this action..."
+                  }
+                  required={["suspend", "ban"].includes(modalAction || "")}
                 />
+                {modalAction === "pause" && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Pause is for user-requested temporary holds (e.g., vacation)
+                  </p>
+                )}
+                {modalAction === "disable" && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Disable is admin-initiated and permanent until re-enabled
+                  </p>
+                )}
+                {modalAction === "suspend" && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Suspend is for policy violations - user will be logged out
+                  </p>
+                )}
               </div>
             )}
 
@@ -680,6 +841,9 @@ export function UserDetailClient({ userId }: Props) {
                     onChange={(e) => setActionData({ ...actionData, expires_at: e.target.value })}
                     className="w-full px-3 py-2 border rounded-md bg-background"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Leave empty for no expiration
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Reason (optional)</label>
@@ -708,12 +872,44 @@ export function UserDetailClient({ userId }: Props) {
               </div>
             )}
 
-            {modalAction === "unsuspend" && (
-              <p className="mb-4 text-sm">This will restore the user's access to their account.</p>
+            {modalAction === "activate" && (
+              <p className="mb-4 text-sm">
+                This will restore the user's account to active status and clear any suspension/pause/disable flags.
+              </p>
+            )}
+
+            {modalAction === "unpause" && (
+              <p className="mb-4 text-sm">
+                This will restore the user's account from paused status.
+              </p>
+            )}
+
+            {modalAction === "enable" && (
+              <p className="mb-4 text-sm">
+                This will re-enable the disabled user account.
+              </p>
             )}
 
             {modalAction === "force_logout" && (
-              <p className="mb-4 text-sm">This will log the user out from all devices immediately.</p>
+              <p className="mb-4 text-sm">
+                This will log the user out from all devices immediately.
+              </p>
+            )}
+
+            {modalAction === "send_password_reset" && (
+              <p className="mb-4 text-sm">
+                This will send a password reset email to <strong>{user.email}</strong>.
+                The user will receive a link to set a new password.
+              </p>
+            )}
+
+            {modalAction === "ban" && (
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                <p className="text-sm text-red-700 dark:text-red-400">
+                  <strong>Warning:</strong> Banning is permanent and can only be reversed by a super admin.
+                  The user will be immediately logged out.
+                </p>
+              </div>
             )}
 
             <div className="flex gap-3 justify-end">
@@ -724,10 +920,21 @@ export function UserDetailClient({ userId }: Props) {
                 onClick={handleAction}
                 disabled={
                   actionLoading ||
-                  ((modalAction === "suspend" || modalAction === "ban") && !actionReason) ||
+                  (["suspend", "ban"].includes(modalAction || "") && !actionReason) ||
                   (modalAction === "update_tier" && !actionData.tier_id)
                 }
                 variant={modalAction === "ban" ? "destructive" : "default"}
+                className={
+                  modalAction === "suspend"
+                    ? "bg-amber-600 hover:bg-amber-700 text-white"
+                    : modalAction === "disable"
+                    ? "bg-gray-600 hover:bg-gray-700 text-white"
+                    : modalAction === "pause"
+                    ? "bg-blue-600 hover:bg-blue-700 text-white"
+                    : ["activate", "enable", "unpause"].includes(modalAction || "")
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : ""
+                }
               >
                 {actionLoading ? "Processing..." : "Confirm"}
               </Button>

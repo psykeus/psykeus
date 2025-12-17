@@ -50,11 +50,9 @@ export function validateRateLimit(
 // Request Body Parsing
 // =============================================================================
 
-export interface ParseJsonResult<T> {
-  success: boolean;
-  data?: T;
-  response?: NextResponse;
-}
+export type ParseJsonResult<T> =
+  | { success: true; data: T; response?: undefined }
+  | { success: false; data?: undefined; response: NextResponse };
 
 /**
  * Parse JSON body from request with error handling
@@ -81,11 +79,9 @@ export async function parseJsonBody<T = unknown>(
 // Parameter Validation
 // =============================================================================
 
-export interface ValidateParamsResult<T> {
-  success: boolean;
-  data?: T;
-  response?: NextResponse;
-}
+export type ValidateParamsResult<T> =
+  | { success: true; data: T; response?: undefined }
+  | { success: false; data?: undefined; response: NextResponse };
 
 /**
  * Validate route parameters against a Zod schema

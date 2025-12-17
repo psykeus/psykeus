@@ -86,6 +86,17 @@ export interface CdnConfig {
   cdnUrl: string;
 }
 
+export interface NotificationsConfig {
+  enabled: boolean;
+  maxPerUser: number;
+  retentionDays: number;
+}
+
+export interface EmailConfig {
+  enabled: boolean;
+  queueEmails: boolean;
+}
+
 export interface FeatureFlags {
   // User Features
   favorites: FavoritesConfig;
@@ -115,6 +126,11 @@ export interface FeatureFlags {
 
   // File Processing
   gcodePreview: { enabled: boolean };
+
+  // Notifications & Email
+  notifications: NotificationsConfig;
+  email: EmailConfig;
+  adminBroadcasts: { enabled: boolean };
 }
 
 export interface AIConfig {
@@ -387,6 +403,18 @@ Return ONLY valid JSON, no markdown or explanation.`,
 
     // File Processing
     gcodePreview: { enabled: false },
+
+    // Notifications & Email
+    notifications: {
+      enabled: true,
+      maxPerUser: 100,
+      retentionDays: 30,
+    },
+    email: {
+      enabled: true,
+      queueEmails: false,
+    },
+    adminBroadcasts: { enabled: true },
   },
 };
 
@@ -489,6 +517,9 @@ function mergeWithDefaults(loaded: Partial<AIConfig>): AIConfig {
       advancedSearch: { ...DEFAULT_AI_CONFIG.featureFlags.advancedSearch, ...loaded.featureFlags?.advancedSearch },
       tagAutocomplete: { ...DEFAULT_AI_CONFIG.featureFlags.tagAutocomplete, ...loaded.featureFlags?.tagAutocomplete },
       gcodePreview: { ...DEFAULT_AI_CONFIG.featureFlags.gcodePreview, ...loaded.featureFlags?.gcodePreview },
+      notifications: { ...DEFAULT_AI_CONFIG.featureFlags.notifications, ...loaded.featureFlags?.notifications },
+      email: { ...DEFAULT_AI_CONFIG.featureFlags.email, ...loaded.featureFlags?.email },
+      adminBroadcasts: { ...DEFAULT_AI_CONFIG.featureFlags.adminBroadcasts, ...loaded.featureFlags?.adminBroadcasts },
     },
   };
 }

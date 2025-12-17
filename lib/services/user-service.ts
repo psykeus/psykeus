@@ -283,6 +283,228 @@ export async function banUser(
 }
 
 /**
+ * Pause a user account (user-requested temporary hold, e.g., vacation)
+ */
+export async function pauseUser(
+  userId: string,
+  reason: string,
+  pausedBy: string
+): Promise<boolean> {
+  const supabase = createServiceClient();
+
+  const { error } = await supabase
+    .from("users")
+    .update({
+      status: "paused",
+      paused_reason: reason,
+      paused_at: new Date().toISOString(),
+      paused_by: pausedBy,
+      // Clear any previous suspended/disabled state
+      suspended_reason: null,
+      suspended_at: null,
+      suspended_by: null,
+      disabled_reason: null,
+      disabled_at: null,
+      disabled_by: null,
+    })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("[UserService] Error pausing user:", error);
+    return false;
+  }
+
+  // Log the action
+  await supabase.from("audit_logs").insert({
+    user_id: pausedBy,
+    action: "pause",
+    entity_type: "user",
+    entity_id: userId,
+    metadata: { reason },
+  });
+
+  return true;
+}
+
+/**
+ * Unpause a user account (restore from paused state)
+ */
+export async function unpauseUser(userId: string, unpausedBy: string): Promise<boolean> {
+  const supabase = createServiceClient();
+
+  const { error } = await supabase
+    .from("users")
+    .update({
+      status: "active",
+      paused_reason: null,
+      paused_at: null,
+      paused_by: null,
+    })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("[UserService] Error unpausing user:", error);
+    return false;
+  }
+
+  // Log the action
+  await supabase.from("audit_logs").insert({
+    user_id: unpausedBy,
+    action: "unpause",
+    entity_type: "user",
+    entity_id: userId,
+  });
+
+  return true;
+}
+
+/**
+ * Disable a user account (admin-disabled, permanent until re-enabled)
+ */
+export async function disableUser(
+  userId: string,
+  reason: string,
+  disabledBy: string
+): Promise<boolean> {
+  const supabase = createServiceClient();
+
+  const { error } = await supabase
+    .from("users")
+    .update({
+      status: "disabled",
+      disabled_reason: reason,
+      disabled_at: new Date().toISOString(),
+      disabled_by: disabledBy,
+      // Clear any previous paused state
+      paused_reason: null,
+      paused_at: null,
+      paused_by: null,
+    })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("[UserService] Error disabling user:", error);
+    return false;
+  }
+
+  // Delete all user sessions (force logout)
+  await supabase.from("user_sessions").delete().eq("user_id", userId);
+
+  // Log the action
+  await supabase.from("audit_logs").insert({
+    user_id: disabledBy,
+    action: "disable",
+    entity_type: "user",
+    entity_id: userId,
+    metadata: { reason },
+  });
+
+  return true;
+}
+
+/**
+ * Enable a user account (restore from disabled state)
+ */
+export async function enableUser(userId: string, enabledBy: string): Promise<boolean> {
+  const supabase = createServiceClient();
+
+  const { error } = await supabase
+    .from("users")
+    .update({
+      status: "active",
+      disabled_reason: null,
+      disabled_at: null,
+      disabled_by: null,
+    })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("[UserService] Error enabling user:", error);
+    return false;
+  }
+
+  // Log the action
+  await supabase.from("audit_logs").insert({
+    user_id: enabledBy,
+    action: "enable",
+    entity_type: "user",
+    entity_id: userId,
+  });
+
+  return true;
+}
+
+/**
+ * Activate a user (restore from any non-active state)
+ * This is a generic restore function that clears all status-related fields
+ */
+export async function activateUser(userId: string, activatedBy: string): Promise<boolean> {
+  const supabase = createServiceClient();
+
+  // Get current status to determine what we're restoring from
+  const { data: currentUser } = await supabase
+    .from("users")
+    .select("status")
+    .eq("id", userId)
+    .single();
+
+  const { error } = await supabase
+    .from("users")
+    .update({
+      status: "active",
+      paused_reason: null,
+      paused_at: null,
+      paused_by: null,
+      disabled_reason: null,
+      disabled_at: null,
+      disabled_by: null,
+      suspended_reason: null,
+      suspended_at: null,
+      suspended_by: null,
+    })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("[UserService] Error activating user:", error);
+    return false;
+  }
+
+  // Log the action with previous status
+  await supabase.from("audit_logs").insert({
+    user_id: activatedBy,
+    action: "activate",
+    entity_type: "user",
+    entity_id: userId,
+    metadata: { previous_status: currentUser?.status },
+  });
+
+  return true;
+}
+
+/**
+ * Send password reset email using Supabase Auth
+ */
+export async function sendPasswordReset(
+  email: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = createServiceClient();
+
+  // Get the site URL from environment
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${siteUrl}/auth/callback?type=recovery`,
+  });
+
+  if (error) {
+    console.error("[UserService] Error sending password reset:", error);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+/**
  * Log user activity
  */
 export async function logUserActivity(

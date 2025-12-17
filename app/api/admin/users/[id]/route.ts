@@ -18,6 +18,12 @@ import {
   suspendUser,
   unsuspendUser,
   banUser,
+  pauseUser,
+  unpauseUser,
+  disableUser,
+  enableUser,
+  activateUser,
+  sendPasswordReset,
 } from "@/lib/services/user-service";
 import type { IdRouteParams } from "@/lib/types";
 import {
@@ -139,6 +145,58 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
           return handleDbError(null, "ban user");
         }
         return NextResponse.json({ success: true, message: "User banned" });
+      }
+
+      case "pause": {
+        const success = await pauseUser(id, updateData.reason as string || "User-requested pause", admin.id);
+        if (!success) {
+          return handleDbError(null, "pause user");
+        }
+        return NextResponse.json({ success: true, message: "User account paused" });
+      }
+
+      case "unpause": {
+        const success = await unpauseUser(id, admin.id);
+        if (!success) {
+          return handleDbError(null, "unpause user");
+        }
+        return NextResponse.json({ success: true, message: "User account unpaused" });
+      }
+
+      case "disable": {
+        const success = await disableUser(id, updateData.reason as string || "Admin disabled", admin.id);
+        if (!success) {
+          return handleDbError(null, "disable user");
+        }
+        return NextResponse.json({ success: true, message: "User account disabled" });
+      }
+
+      case "enable": {
+        const success = await enableUser(id, admin.id);
+        if (!success) {
+          return handleDbError(null, "enable user");
+        }
+        return NextResponse.json({ success: true, message: "User account enabled" });
+      }
+
+      case "activate": {
+        // Generic restore from any non-active state
+        const success = await activateUser(id, admin.id);
+        if (!success) {
+          return handleDbError(null, "activate user");
+        }
+        return NextResponse.json({ success: true, message: "User account activated" });
+      }
+
+      case "send_password_reset": {
+        const result = await sendPasswordReset(targetUser.email);
+        if (!result.success) {
+          return NextResponse.json(
+            { error: result.error || "Failed to send password reset" },
+            { status: 500 }
+          );
+        }
+        return NextResponse.json({ success: true, message: "Password reset email sent" });
       }
 
       case "update_tier": {

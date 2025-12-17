@@ -25,12 +25,12 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
+import { Spinner } from "@/components/ui/loading-states";
 import {
   FolderOpen,
   Search,
   CheckCircle,
   AlertCircle,
-  Loader2,
   ArrowRight,
   ArrowLeft,
   Play,
@@ -338,7 +338,7 @@ export function ImportWizard() {
               Scanning Directory
             </div>
             <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <Spinner size="lg" />
               <p className="mt-4 text-muted-foreground">Scanning files and detecting projects...</p>
             </div>
           </div>
@@ -1124,7 +1124,7 @@ export function ImportWizard() {
             disabled={!sourcePath.trim() || isScanning}
           >
             {isScanning ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <Spinner size="sm" className="mr-2" />
             ) : (
               <Search className="mr-2 h-4 w-4" />
             )}
@@ -1145,7 +1145,7 @@ export function ImportWizard() {
               <>
                 <Button variant="outline" onClick={() => handleCreateJob(true)} disabled={isCreatingJob}>
                   {isCreatingJob ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Spinner size="sm" className="mr-2" />
                   ) : (
                     <Play className="mr-2 h-4 w-4" />
                   )}
@@ -1153,7 +1153,7 @@ export function ImportWizard() {
                 </Button>
                 <Button onClick={() => handleCreateJob(false)} disabled={isCreatingJob}>
                   {isCreatingJob ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Spinner size="sm" className="mr-2" />
                   ) : (
                     <Clock className="mr-2 h-4 w-4" />
                   )}
@@ -1163,7 +1163,7 @@ export function ImportWizard() {
             ) : (
               <Button onClick={() => handleCreateJob(true)} disabled={isCreatingJob}>
                 {isCreatingJob ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Spinner size="sm" className="mr-2" />
                 ) : (
                   <Play className="mr-2 h-4 w-4" />
                 )}

@@ -7,6 +7,7 @@
 
 import Stripe from "stripe";
 import { createServiceClient } from "@/lib/supabase/server";
+import { getStripeSecretKey, getStripeWebhookSecret } from "@/lib/services/stripe-admin-service";
 import type {
   SubscriptionDetails,
   PaymentHistory,
@@ -17,17 +18,29 @@ import type {
   TierFeature,
 } from "@/lib/types";
 
-// Lazy-loaded Stripe instance to avoid initialization errors at build time
+// Cached Stripe instance and the key it was created with
 let _stripe: Stripe | null = null;
+let _stripeKey: string | null = null;
 
-function getStripe(): Stripe {
-  if (!_stripe) {
-    const secretKey = process.env.STRIPE_SECRET_KEY;
-    if (!secretKey) {
-      throw new Error("STRIPE_SECRET_KEY environment variable is not set");
-    }
-    _stripe = new Stripe(secretKey);
+/**
+ * Get Stripe client using database settings (with env fallback)
+ */
+async function getStripe(): Promise<Stripe> {
+  const secretKey = await getStripeSecretKey();
+
+  if (!secretKey) {
+    throw new Error(
+      "Stripe is not configured. Please set up Stripe credentials in Admin > Stripe Settings."
+    );
   }
+
+  // Reuse existing instance if key hasn't changed
+  if (_stripe && _stripeKey === secretKey) {
+    return _stripe;
+  }
+
+  _stripe = new Stripe(secretKey);
+  _stripeKey = secretKey;
   return _stripe;
 }
 
@@ -53,7 +66,8 @@ export async function getOrCreateStripeCustomer(
   }
 
   // Create new Stripe customer
-  const customer = await getStripe().customers.create({
+  const stripe = await getStripe();
+  const customer = await stripe.customers.create({
     email,
     name: name || undefined,
     metadata: {
@@ -134,7 +148,8 @@ export async function createCheckoutSession(params: {
     };
   }
 
-  const session = await getStripe().checkout.sessions.create(sessionParams);
+  const stripe = await getStripe();
+  const session = await stripe.checkout.sessions.create(sessionParams);
 
   return {
     sessionId: session.id,
@@ -163,7 +178,8 @@ export async function createPortalSession(params: {
     throw new Error("No Stripe customer found for this user");
   }
 
-  const session = await getStripe().billingPortal.sessions.create({
+  const stripe = await getStripe();
+  const session = await stripe.billingPortal.sessions.create({
     customer: user.stripe_customer_id,
     return_url: returnUrl,
   });
@@ -213,7 +229,8 @@ export async function getSubscriptionDetails(
 
     if (subUser?.stripe_subscription_id) {
       try {
-        const subscription = await getStripe().subscriptions.retrieve(
+        const stripe = await getStripe();
+        const subscription = await stripe.subscriptions.retrieve(
           subUser.stripe_subscription_id
         );
         cancelAtPeriodEnd = subscription.cancel_at_period_end;
@@ -575,17 +592,20 @@ export async function handleInvoicePaymentFailed(
 /**
  * Construct a Stripe event from raw body and signature
  */
-export function constructWebhookEvent(
+export async function constructWebhookEvent(
   rawBody: string | Buffer,
   signature: string
-): Stripe.Event {
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+): Promise<Stripe.Event> {
+  const webhookSecret = await getStripeWebhookSecret();
 
   if (!webhookSecret) {
-    throw new Error("STRIPE_WEBHOOK_SECRET is not configured");
+    throw new Error(
+      "Stripe webhook secret is not configured. Please set it up in Admin > Stripe Settings."
+    );
   }
 
-  return getStripe().webhooks.constructEvent(rawBody, signature, webhookSecret);
+  const stripe = await getStripe();
+  return stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
 }
 
 /**
@@ -656,7 +676,8 @@ export async function cancelSubscription(userId: string): Promise<boolean> {
     throw new Error("No active subscription found");
   }
 
-  await getStripe().subscriptions.update(user.stripe_subscription_id, {
+  const stripe = await getStripe();
+  await stripe.subscriptions.update(user.stripe_subscription_id, {
     cancel_at_period_end: true,
   });
 
@@ -679,7 +700,8 @@ export async function reactivateSubscription(userId: string): Promise<boolean> {
     throw new Error("No subscription found");
   }
 
-  await getStripe().subscriptions.update(user.stripe_subscription_id, {
+  const stripe = await getStripe();
+  await stripe.subscriptions.update(user.stripe_subscription_id, {
     cancel_at_period_end: false,
   });
 

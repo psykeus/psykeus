@@ -13,7 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Shield, Zap, Heart, MessageCircle } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Pricing - CNC Design Library",
+  title: "Pricing",
   description:
     "Choose the plan that works for you. Access premium CNC and laser cutting designs with our flexible subscription options.",
 };

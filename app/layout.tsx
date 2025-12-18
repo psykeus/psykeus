@@ -21,18 +21,18 @@ const archivo = Archivo({
 
 export const metadata: Metadata = {
   title: {
-    default: "CNC Design Library",
-    template: "%s | CNC Library",
+    default: "Psykeus CNC Design Library",
+    template: "%s | Psykeus",
   },
   description: "Browse and download CNC and laser cutting designs for your projects. Free design files for woodworking, metalworking, and crafting.",
-  keywords: ["CNC", "laser cutting", "design files", "woodworking", "DXF", "SVG", "STL"],
-  authors: [{ name: "CNC Design Library" }],
+  keywords: ["CNC", "laser cutting", "design files", "woodworking", "DXF", "SVG", "STL", "Psykeus"],
+  authors: [{ name: "Psykeus" }],
   icons: {
     icon: "/icon.svg",
-    apple: "/apple-icon.svg",
+    apple: "/apple-icon.png",
   },
   openGraph: {
-    title: "CNC Design Library",
+    title: "Psykeus CNC Design Library",
     description: "Browse and download CNC and laser cutting designs",
     type: "website",
   },

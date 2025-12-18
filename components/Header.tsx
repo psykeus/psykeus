@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getUser, isAdmin as checkIsAdmin } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -16,23 +17,27 @@ export async function Header() {
         {/* Logo */}
         <Link
           href="/"
-          className="flex items-center gap-2 font-heading text-xl font-semibold tracking-tight hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
         >
-          <svg
-            className="h-7 w-7 text-primary"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M12 2L2 7l10 5 10-5-10-5z" />
-            <path d="M2 17l10 5 10-5" />
-            <path d="M2 12l10 5 10-5" />
-          </svg>
-          <span className="hidden sm:inline">CNC Library</span>
-          <span className="sm:hidden">CNC</span>
+          <Image
+            src="/images/psykeus-logo-blk.png"
+            alt="Psykeus"
+            height={28}
+            width={50}
+            className="dark:hidden"
+            priority
+          />
+          <Image
+            src="/images/psykeus-logo-white.png"
+            alt="Psykeus"
+            height={28}
+            width={50}
+            className="hidden dark:block"
+            priority
+          />
+          <span className="hidden sm:block text-[10px] text-muted-foreground font-medium tracking-widest uppercase">
+            CNC Design Library
+          </span>
         </Link>
 
         {/* Desktop Navigation */}

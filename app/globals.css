@@ -4,67 +4,67 @@
 
 @layer base {
   :root {
-    /* Craft/Industrial Light Theme */
-    --background: 40 33% 97%;          /* Warm cream #FAF8F5 */
-    --foreground: 20 14% 15%;          /* Dark walnut #292524 */
+    /* Psykeus Elegant Light Theme - Charcoal/Slate */
+    --background: 0 0% 98%;            /* Near white #FAFAFA */
+    --foreground: 220 13% 18%;         /* Deep charcoal #292D32 */
 
     --card: 0 0% 100%;                 /* Pure white */
-    --card-foreground: 20 14% 15%;
+    --card-foreground: 220 13% 18%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 20 14% 15%;
+    --popover-foreground: 220 13% 18%;
 
-    --primary: 28 80% 37%;             /* Copper #B45309 */
-    --primary-foreground: 40 33% 97%;
+    --primary: 220 13% 18%;            /* Deep charcoal #292D32 */
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 30 7% 82%;            /* Tan/leather #D6D3D1 */
-    --secondary-foreground: 20 14% 15%;
+    --secondary: 220 9% 90%;           /* Light slate #E5E7EB */
+    --secondary-foreground: 220 13% 18%;
 
-    --muted: 30 6% 90%;                /* Light stone #E7E5E4 */
-    --muted-foreground: 20 6% 40%;
+    --muted: 220 9% 94%;               /* Very light slate #F1F2F4 */
+    --muted-foreground: 220 9% 46%;
 
-    --accent: 45 93% 40%;              /* Brass #CA8A04 */
-    --accent-foreground: 40 33% 97%;
+    --accent: 220 9% 46%;              /* Slate gray #6B7280 */
+    --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 72% 51%;          /* Rust red #DC2626 */
-    --destructive-foreground: 40 33% 97%;
+    --destructive: 0 72% 51%;          /* Red #DC2626 */
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 30 7% 82%;
-    --input: 30 7% 82%;
-    --ring: 28 80% 37%;
+    --border: 220 9% 86%;
+    --input: 220 9% 86%;
+    --ring: 220 13% 18%;
 
     --radius: 0.5rem;
   }
 
   .dark {
-    /* Craft/Industrial Dark Theme */
-    --background: 20 14% 9%;           /* Deep charcoal #1C1917 */
-    --foreground: 60 9% 98%;           /* Light cream #FAFAF9 */
+    /* Psykeus Elegant Dark Theme - Charcoal/Slate */
+    --background: 220 13% 9%;          /* Very dark #16181D */
+    --foreground: 0 0% 95%;            /* Near white #F2F2F2 */
 
-    --card: 20 14% 15%;                /* Dark card #292524 */
-    --card-foreground: 60 9% 98%;
+    --card: 220 13% 14%;               /* Dark card #1F2329 */
+    --card-foreground: 0 0% 95%;
 
-    --popover: 20 14% 15%;
-    --popover-foreground: 60 9% 98%;
+    --popover: 220 13% 14%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 32 93% 52%;             /* Warm copper #D97706 */
-    --primary-foreground: 20 14% 9%;
+    --primary: 0 0% 95%;               /* Near white #F2F2F2 */
+    --primary-foreground: 220 13% 9%;
 
-    --secondary: 25 9% 26%;            /* Dark stone #44403C */
-    --secondary-foreground: 60 9% 98%;
+    --secondary: 220 9% 22%;           /* Dark slate #32373F */
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 24 10% 33%;               /* Medium stone #57534E */
-    --muted-foreground: 25 5% 65%;
+    --muted: 220 9% 26%;               /* Medium dark slate #3B414B */
+    --muted-foreground: 220 9% 60%;
 
-    --accent: 48 96% 53%;              /* Gold #EAB308 */
-    --accent-foreground: 20 14% 9%;
+    --accent: 220 9% 70%;              /* Light slate #A8B0BC */
+    --accent-foreground: 220 13% 9%;
 
-    --destructive: 0 91% 71%;          /* Light rust #F87171 */
-    --destructive-foreground: 20 14% 9%;
+    --destructive: 0 91% 71%;          /* Light red #F87171 */
+    --destructive-foreground: 220 13% 9%;
 
-    --border: 25 9% 26%;
-    --input: 25 9% 26%;
-    --ring: 32 93% 52%;
+    --border: 220 9% 22%;
+    --input: 220 9% 22%;
+    --ring: 0 0% 95%;
   }
 }
 
@@ -92,21 +92,21 @@
   }
 }
 
-/* Warm shadows for craft aesthetic */
+/* Elegant shadows for Psykeus brand */
 @layer utilities {
   .shadow-warm {
-    box-shadow: 0 1px 3px 0 rgba(180, 83, 9, 0.1),
-                0 1px 2px -1px rgba(180, 83, 9, 0.1);
+    box-shadow: 0 1px 3px 0 rgba(41, 45, 50, 0.1),
+                0 1px 2px -1px rgba(41, 45, 50, 0.1);
   }
 
   .shadow-warm-md {
-    box-shadow: 0 4px 6px -1px rgba(180, 83, 9, 0.1),
-                0 2px 4px -2px rgba(180, 83, 9, 0.1);
+    box-shadow: 0 4px 6px -1px rgba(41, 45, 50, 0.1),
+                0 2px 4px -2px rgba(41, 45, 50, 0.1);
   }
 
   .shadow-warm-lg {
-    box-shadow: 0 10px 15px -3px rgba(180, 83, 9, 0.1),
-                0 4px 6px -4px rgba(180, 83, 9, 0.1);
+    box-shadow: 0 10px 15px -3px rgba(41, 45, 50, 0.1),
+                0 4px 6px -4px rgba(41, 45, 50, 0.1);
   }
 }
 

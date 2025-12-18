@@ -258,7 +258,8 @@ BEGIN
 END;
 $$;
 
--- 3d. get_user_status_reason
+-- 3d. get_user_status_reason - must drop first due to return type change
+DROP FUNCTION IF EXISTS public.get_user_status_reason(UUID);
 CREATE OR REPLACE FUNCTION public.get_user_status_reason(user_uuid UUID)
 RETURNS TEXT
 LANGUAGE plpgsql

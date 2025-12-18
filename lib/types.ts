@@ -402,3 +402,110 @@ export interface AccessTierWithStripe extends AccessTier {
   stripe_price_id_yearly: string | null;
   stripe_price_id_lifetime: string | null;
 }
+
+// =============================================================================
+// Tier Features & Management Types
+// =============================================================================
+
+/**
+ * Custom display feature for a pricing tier
+ */
+export interface TierFeature {
+  id: string;
+  tier_id: string;
+  feature_text: string;
+  icon: string | null;
+  sort_order: number;
+  is_highlighted: boolean;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Access tier with all display settings
+ */
+export interface AccessTierFull extends AccessTierWithStripe {
+  show_on_pricing: boolean;
+  highlight_label: string | null;
+  cta_text: string;
+  features?: TierFeature[];
+}
+
+/**
+ * Full tier with features and user count for admin
+ */
+export interface TierWithFeatures extends AccessTierFull {
+  features: TierFeature[];
+  user_count?: number;
+}
+
+/**
+ * Request payload for creating a new tier
+ */
+export interface CreateTierRequest {
+  name: string;
+  slug: string;
+  description: string | null;
+  daily_download_limit: number | null;
+  monthly_download_limit: number | null;
+  can_access_premium: boolean;
+  can_access_exclusive: boolean;
+  can_create_collections: boolean;
+  max_collections: number | null;
+  max_favorites: number | null;
+  price_monthly: number | null;
+  price_yearly: number | null;
+  sort_order: number;
+  is_active: boolean;
+  show_on_pricing: boolean;
+  highlight_label: string | null;
+  cta_text: string;
+}
+
+/**
+ * Request payload for updating an existing tier
+ */
+export interface UpdateTierRequest extends Partial<CreateTierRequest> {
+  stripe_price_id_yearly?: string | null;
+  stripe_price_id_lifetime?: string | null;
+}
+
+/**
+ * Request payload for creating a tier feature
+ */
+export interface CreateTierFeatureRequest {
+  tier_id: string;
+  feature_text: string;
+  icon?: string | null;
+  sort_order?: number;
+  is_highlighted?: boolean;
+}
+
+/**
+ * Request payload for updating a tier feature
+ */
+export interface UpdateTierFeatureRequest {
+  feature_text?: string;
+  icon?: string | null;
+  sort_order?: number;
+  is_highlighted?: boolean;
+  is_active?: boolean;
+}
+
+/**
+ * Tier statistics for admin dashboard
+ */
+export interface TierStats {
+  tier_id: string;
+  tier_name: string;
+  user_count: number;
+  active_subscriptions: number;
+}
+
+/**
+ * Route params with featureId (e.g., /api/admin/tiers/features/[featureId])
+ */
+export interface FeatureIdRouteParams {
+  params: Promise<{ featureId: string }>;
+}

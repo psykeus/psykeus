@@ -13,6 +13,8 @@ import type {
   SubscriptionType,
   PaymentType,
   AccessTierWithStripe,
+  AccessTierFull,
+  TierFeature,
 } from "@/lib/types";
 
 // Lazy-loaded Stripe instance to avoid initialization errors at build time
@@ -604,6 +606,38 @@ export async function getAccessTiersWithPricing(): Promise<AccessTierWithStripe[
   }
 
   return data as AccessTierWithStripe[];
+}
+
+/**
+ * Get all access tiers with features for pricing page display
+ */
+export async function getAccessTiersForPricing(): Promise<AccessTierFull[]> {
+  const supabase = createServiceClient();
+
+  const { data, error } = await supabase
+    .from("access_tiers")
+    .select(`
+      *,
+      stripe_price_id_yearly,
+      stripe_price_id_lifetime,
+      tier_features(*)
+    `)
+    .eq("is_active", true)
+    .eq("show_on_pricing", true)
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    console.error("[StripeService] Error fetching tiers for pricing:", error);
+    return [];
+  }
+
+  // Sort features and map to expected structure
+  return (data || []).map((tier) => ({
+    ...tier,
+    features: ((tier.tier_features as TierFeature[]) || [])
+      .filter((f) => f.is_active)
+      .sort((a, b) => a.sort_order - b.sort_order),
+  })) as AccessTierFull[];
 }
 
 /**

@@ -4,6 +4,7 @@
  * PricingCards Component
  *
  * Displays pricing tiers with yearly/lifetime toggle and checkout buttons.
+ * Uses database-driven features when available, falls back to generated features.
  */
 
 import { useState } from "react";
@@ -12,12 +13,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Check, Crown, Sparkles } from "lucide-react";
+import { Check, Crown, Sparkles, Star } from "lucide-react";
 import { Spinner } from "@/components/ui/loading-states";
-import type { AccessTierWithStripe } from "@/lib/types";
+import type { AccessTierFull, AccessTierWithStripe } from "@/lib/types";
 
 interface PricingCardsProps {
-  tiers: AccessTierWithStripe[];
+  tiers: (AccessTierFull | AccessTierWithStripe)[];
   currentTierId?: string | null;
   isLoggedIn: boolean;
 }
@@ -95,51 +96,83 @@ export function PricingCards({ tiers, currentTierId, isLoggedIn }: PricingCardsP
     }
   };
 
-  const getFeatures = (tier: AccessTierWithStripe): string[] => {
-    const features: string[] = [];
+  // Type guard to check if tier has features
+  const hasFeatures = (tier: AccessTierFull | AccessTierWithStripe): tier is AccessTierFull => {
+    return "features" in tier && Array.isArray((tier as AccessTierFull).features);
+  };
+
+  // Get features - use database features if available, otherwise generate from limits
+  const getFeatures = (tier: AccessTierFull | AccessTierWithStripe): { text: string; highlighted: boolean }[] => {
+    // If tier has database features, use them
+    if (hasFeatures(tier) && tier.features && tier.features.length > 0) {
+      return tier.features.map((f) => ({
+        text: f.feature_text,
+        highlighted: f.is_highlighted,
+      }));
+    }
+
+    // Fallback: Generate features from tier limits
+    const features: { text: string; highlighted: boolean }[] = [];
 
     // Download limits
     if (tier.daily_download_limit) {
-      features.push(`${tier.daily_download_limit} downloads per day`);
+      features.push({ text: `${tier.daily_download_limit} downloads per day`, highlighted: false });
     } else if (tier.slug !== "free") {
-      features.push("Unlimited daily downloads");
+      features.push({ text: "Unlimited daily downloads", highlighted: true });
     } else {
-      features.push("3 downloads per day");
+      features.push({ text: "3 downloads per day", highlighted: false });
     }
 
     if (tier.monthly_download_limit) {
-      features.push(`${tier.monthly_download_limit} downloads per month`);
+      features.push({ text: `${tier.monthly_download_limit} downloads per month`, highlighted: false });
     } else if (tier.slug !== "free") {
-      features.push("Unlimited monthly downloads");
+      features.push({ text: "Unlimited monthly downloads", highlighted: true });
     } else {
-      features.push("10 downloads per month");
+      features.push({ text: "10 downloads per month", highlighted: false });
     }
 
     // Access levels
     if (tier.can_access_premium) {
-      features.push("Access to Premium designs");
+      features.push({ text: "Access to Premium designs", highlighted: true });
     }
     if (tier.can_access_exclusive) {
-      features.push("Access to Exclusive designs");
+      features.push({ text: "Access to Exclusive designs", highlighted: true });
     }
 
     // Collections
     if (tier.can_create_collections) {
       if (tier.max_collections) {
-        features.push(`Up to ${tier.max_collections} collections`);
+        features.push({ text: `Up to ${tier.max_collections} collections`, highlighted: false });
       } else {
-        features.push("Unlimited collections");
+        features.push({ text: "Unlimited collections", highlighted: false });
       }
     }
 
     // Favorites
     if (tier.max_favorites) {
-      features.push(`Up to ${tier.max_favorites} favorites`);
+      features.push({ text: `Up to ${tier.max_favorites} favorites`, highlighted: false });
     } else if (tier.slug !== "free") {
-      features.push("Unlimited favorites");
+      features.push({ text: "Unlimited favorites", highlighted: false });
     }
 
     return features;
+  };
+
+  // Get highlight label from database or use default
+  const getHighlightLabel = (tier: AccessTierFull | AccessTierWithStripe): string | null => {
+    if (hasFeatures(tier) && tier.highlight_label) {
+      return tier.highlight_label;
+    }
+    // Default: Premium tier gets "Most Popular"
+    return tier.slug === "premium" ? "Most Popular" : null;
+  };
+
+  // Get CTA text from database or use default
+  const getCtaText = (tier: AccessTierFull | AccessTierWithStripe): string => {
+    if (hasFeatures(tier) && tier.cta_text) {
+      return tier.cta_text;
+    }
+    return `Get ${tier.name}`;
   };
 
   return (
@@ -178,8 +211,14 @@ export function PricingCards({ tiers, currentTierId, isLoggedIn }: PricingCardsP
               <ul className="space-y-3">
                 {getFeatures(freeTier).map((feature, i) => (
                   <li key={i} className="flex items-start gap-2">
-                    <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                    <span className="text-sm">{feature}</span>
+                    {feature.highlighted ? (
+                      <Star className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="currentColor" />
+                    ) : (
+                      <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                    )}
+                    <span className={`text-sm ${feature.highlighted ? "font-medium" : ""}`}>
+                      {feature.text}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -189,26 +228,27 @@ export function PricingCards({ tiers, currentTierId, isLoggedIn }: PricingCardsP
                 className="w-full"
                 disabled={currentTierId === freeTier.id || !isLoggedIn}
               >
-                {currentTierId === freeTier.id ? "Current Plan" : "Get Started Free"}
+                {currentTierId === freeTier.id ? "Current Plan" : getCtaText(freeTier)}
               </Button>
             </CardContent>
           </Card>
         )}
 
         {/* Paid Tiers */}
-        {paidTiers.map((tier, index) => {
+        {paidTiers.map((tier) => {
           const isCurrentTier = currentTierId === tier.id;
-          const isPopular = tier.slug === "premium";
+          const highlightLabel = getHighlightLabel(tier);
+          const isHighlighted = !!highlightLabel;
           const isLoading = loadingTierId === tier.id;
 
           return (
             <Card
               key={tier.id}
-              className={`relative ${isPopular ? "border-primary shadow-lg" : ""}`}
+              className={`relative ${isHighlighted ? "border-primary shadow-lg" : ""}`}
             >
-              {isPopular && (
+              {highlightLabel && (
                 <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  Most Popular
+                  {highlightLabel}
                 </Badge>
               )}
 
@@ -229,15 +269,21 @@ export function PricingCards({ tiers, currentTierId, isLoggedIn }: PricingCardsP
                 <ul className="space-y-3">
                   {getFeatures(tier).map((feature, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-                      <span className="text-sm">{feature}</span>
+                      {feature.highlighted ? (
+                        <Star className="h-5 w-5 text-yellow-500 flex-shrink-0 mt-0.5" fill="currentColor" />
+                      ) : (
+                        <Check className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                      )}
+                      <span className={`text-sm ${feature.highlighted ? "font-medium" : ""}`}>
+                        {feature.text}
+                      </span>
                     </li>
                   ))}
                 </ul>
 
                 <Button
                   className="w-full"
-                  variant={isPopular ? "default" : "outline"}
+                  variant={isHighlighted ? "default" : "outline"}
                   disabled={isCurrentTier || isLoading}
                   onClick={() => handleCheckout(tier.id)}
                 >
@@ -249,7 +295,7 @@ export function PricingCards({ tiers, currentTierId, isLoggedIn }: PricingCardsP
                   ) : isCurrentTier ? (
                     "Current Plan"
                   ) : (
-                    `Get ${tier.name}`
+                    getCtaText(tier)
                   )}
                 </Button>
               </CardContent>

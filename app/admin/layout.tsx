@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { isWebhooksEnabled } from "@/lib/feature-flags";
-import { LayoutDashboard, Layers, Upload, Copy, Users, Bot, PackagePlus, ToggleRight, CreditCard, Webhook, Megaphone, Mail } from "lucide-react";
+import { LayoutDashboard, Layers, Upload, Copy, Users, Bot, PackagePlus, ToggleRight, CreditCard, Webhook, Megaphone, Mail, Tags } from "lucide-react";
 
 const baseNavItems = [
   { href: "/admin", icon: LayoutDashboard, label: "Dashboard" },
@@ -14,6 +14,7 @@ const baseNavItems = [
   { href: "/admin/email", icon: Mail, label: "Email" },
   { href: "/admin/features", icon: ToggleRight, label: "Features" },
   { href: "/admin/ai-settings", icon: Bot, label: "AI Settings" },
+  { href: "/admin/tiers", icon: Tags, label: "Pricing Tiers" },
   { href: "/admin/stripe", icon: CreditCard, label: "Stripe" },
 ];
 

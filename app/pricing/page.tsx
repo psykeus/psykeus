@@ -6,7 +6,7 @@
 
 import { Metadata } from "next";
 import { getUser } from "@/lib/auth";
-import { getAccessTiersWithPricing } from "@/lib/services/stripe-service";
+import { getAccessTiersForPricing } from "@/lib/services/stripe-service";
 import { getUserWithTier } from "@/lib/services/user-service";
 import { PricingCards } from "@/components/PricingCards";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 export default async function PricingPage() {
   const [user, tiers] = await Promise.all([
     getUser(),
-    getAccessTiersWithPricing(),
+    getAccessTiersForPricing(),
   ]);
 
   let currentTierId: string | null = null;

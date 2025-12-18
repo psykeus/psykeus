@@ -145,6 +145,7 @@ export function LoginForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            autoComplete="email"
             className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="you@example.com"
           />
@@ -161,6 +162,7 @@ export function LoginForm() {
             onChange={(e) => setPassword(e.target.value)}
             required
             minLength={6}
+            autoComplete={isSignUp ? "new-password" : "current-password"}
             className="w-full px-3 py-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="••••••••"
           />

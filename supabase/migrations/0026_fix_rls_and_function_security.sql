@@ -216,44 +216,50 @@ BEGIN
 END;
 $$;
 
--- 3c. can_user_access_design - need to check current definition first
--- Drop and recreate with proper search_path
-CREATE OR REPLACE FUNCTION public.can_user_access_design(
-  user_uuid UUID,
-  design_access_level TEXT
-)
+-- 3c. can_user_access_design - update existing function with search_path
+-- Signature is (UUID, UUID) for user_uuid and design_uuid
+CREATE OR REPLACE FUNCTION public.can_user_access_design(user_uuid UUID, design_uuid UUID)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
-STABLE
 SECURITY DEFINER
 SET search_path = ''
 AS $$
 DECLARE
-  v_tier_can_access_premium BOOLEAN;
-  v_tier_can_access_exclusive BOOLEAN;
+  design_access VARCHAR(20);
+  user_tier RECORD;
 BEGIN
+  -- Get design access level
+  SELECT access_level INTO design_access
+  FROM public.designs WHERE id = design_uuid;
+
+  IF NOT FOUND THEN
+    RETURN FALSE;
+  END IF;
+
   -- Free designs are accessible to everyone
-  IF design_access_level = 'free' THEN
+  IF design_access = 'free' THEN
     RETURN TRUE;
   END IF;
 
-  -- Get user's tier capabilities
-  SELECT
-    COALESCE(at.can_access_premium, FALSE),
-    COALESCE(at.can_access_exclusive, FALSE)
-  INTO v_tier_can_access_premium, v_tier_can_access_exclusive
+  -- Get user's tier (only active users can access premium content)
+  SELECT t.* INTO user_tier
   FROM public.users u
-  LEFT JOIN public.access_tiers at ON at.id = u.tier_id
-  WHERE u.id = user_uuid;
+  JOIN public.access_tiers t ON u.tier_id = t.id
+  WHERE u.id = user_uuid
+    AND (u.tier_expires_at IS NULL OR u.tier_expires_at > NOW())
+    AND u.status = 'active';
 
-  -- Check access based on design level
-  IF design_access_level = 'premium' THEN
-    RETURN v_tier_can_access_premium OR v_tier_can_access_exclusive;
-  ELSIF design_access_level = 'exclusive' THEN
-    RETURN v_tier_can_access_exclusive;
+  IF NOT FOUND THEN
+    RETURN FALSE;
   END IF;
 
-  -- Default deny
+  -- Check access based on design level
+  IF design_access = 'premium' THEN
+    RETURN user_tier.can_access_premium;
+  ELSIF design_access = 'exclusive' THEN
+    RETURN user_tier.can_access_exclusive;
+  END IF;
+
   RETURN FALSE;
 END;
 $$;
@@ -293,5 +299,5 @@ $$;
 
 COMMENT ON FUNCTION update_email_settings_updated_at IS 'Trigger function for email_settings updated_at - secured with empty search_path';
 COMMENT ON FUNCTION update_email_templates_updated_at IS 'Trigger function for email_templates updated_at - secured with empty search_path';
-COMMENT ON FUNCTION public.can_user_access_design IS 'Check if user can access a design based on their tier - secured with empty search_path';
+COMMENT ON FUNCTION public.can_user_access_design(UUID, UUID) IS 'Check if user can access a design based on their tier - secured with empty search_path';
 COMMENT ON FUNCTION public.get_user_status_reason IS 'Get the reason for a user status (suspended/paused/disabled) - secured with empty search_path';

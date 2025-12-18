@@ -66,22 +66,46 @@ export function PricingCards({ tiers, currentTierId, isLoggedIn }: PricingCardsP
     }
   };
 
-  const formatPrice = (tier: AccessTierWithStripe): string => {
+  // Type guard to check for display fields
+  const hasDisplayFields = (tier: AccessTierFull | AccessTierWithStripe): tier is AccessTierFull => {
+    return "price_yearly_display" in tier || "price_lifetime_display" in tier;
+  };
+
+  const formatPrice = (tier: AccessTierFull | AccessTierWithStripe): string => {
     if (tier.slug === "free") return "$0";
 
+    // Use custom display text if available
+    if (hasDisplayFields(tier)) {
+      if (isLifetime && tier.price_lifetime_display) {
+        return tier.price_lifetime_display;
+      }
+      if (!isLifetime && tier.price_yearly_display) {
+        return tier.price_yearly_display;
+      }
+    }
+
+    // Fallback to numeric prices
     if (isLifetime) {
-      // Lifetime prices: Premium $299.99, Pro $599.99
+      const fullTier = tier as AccessTierFull;
+      if (fullTier.price_lifetime) return `$${fullTier.price_lifetime}`;
+      // Legacy fallback
       if (tier.slug === "premium") return "$299.99";
       if (tier.slug === "pro") return "$599.99";
     } else {
-      // Yearly prices from tier data
       if (tier.price_yearly) return `$${tier.price_yearly}`;
     }
     return "Contact us";
   };
 
-  const getPriceLabel = (tier: AccessTierWithStripe): string => {
+  const getPriceLabel = (tier: AccessTierFull | AccessTierWithStripe): string => {
     if (tier.slug === "free") return "forever";
+
+    // If using custom display text, don't add a label (it's already included)
+    if (hasDisplayFields(tier)) {
+      if (isLifetime && tier.price_lifetime_display) return "";
+      if (!isLifetime && tier.price_yearly_display) return "";
+    }
+
     return isLifetime ? "one-time" : "/year";
   };
 

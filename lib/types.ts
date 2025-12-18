@@ -59,6 +59,9 @@ export interface AccessTier {
   max_favorites: number | null;
   price_monthly: number | null;
   price_yearly: number | null;
+  price_lifetime: number | null;
+  price_yearly_display: string | null;
+  price_lifetime_display: string | null;
   sort_order: number;
   is_active: boolean;
   created_at: string;
@@ -456,6 +459,9 @@ export interface CreateTierRequest {
   max_favorites: number | null;
   price_monthly: number | null;
   price_yearly: number | null;
+  price_lifetime: number | null;
+  price_yearly_display: string | null;
+  price_lifetime_display: string | null;
   sort_order: number;
   is_active: boolean;
   show_on_pricing: boolean;

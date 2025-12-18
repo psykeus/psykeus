@@ -60,6 +60,9 @@ function TierForm({ tier, onClose, onSave, saving }: TierFormProps) {
     max_favorites: tier?.max_favorites ?? null,
     price_monthly: tier?.price_monthly ?? null,
     price_yearly: tier?.price_yearly ?? null,
+    price_lifetime: tier?.price_lifetime ?? null,
+    price_yearly_display: tier?.price_yearly_display || "",
+    price_lifetime_display: tier?.price_lifetime_display || "",
     sort_order: tier?.sort_order ?? 0,
     is_active: tier?.is_active ?? true,
     show_on_pricing: tier?.show_on_pricing ?? true,
@@ -303,27 +306,6 @@ function TierForm({ tier, onClose, onSave, saving }: TierFormProps) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
-                  Monthly Price ($)
-                </label>
-                <input
-                  type="number"
-                  value={formData.price_monthly ?? ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      price_monthly: e.target.value
-                        ? parseFloat(e.target.value)
-                        : null,
-                    })
-                  }
-                  className="w-full px-3 py-2 border rounded-md bg-background"
-                  placeholder="0.00"
-                  min={0}
-                  step="0.01"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">
                   Yearly Price ($)
                 </label>
                 <input
@@ -342,6 +324,69 @@ function TierForm({ tier, onClose, onSave, saving }: TierFormProps) {
                   min={0}
                   step="0.01"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Lifetime Price ($)
+                </label>
+                <input
+                  type="number"
+                  value={formData.price_lifetime ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      price_lifetime: e.target.value
+                        ? parseFloat(e.target.value)
+                        : null,
+                    })
+                  }
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  placeholder="0.00"
+                  min={0}
+                  step="0.01"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Yearly Display Text
+                </label>
+                <input
+                  type="text"
+                  value={formData.price_yearly_display || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      price_yearly_display: e.target.value || null,
+                    })
+                  }
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  placeholder="e.g., $99/year or Included in Lifetime"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Custom text shown on pricing page for yearly option
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Lifetime Display Text
+                </label>
+                <input
+                  type="text"
+                  value={formData.price_lifetime_display || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      price_lifetime_display: e.target.value || null,
+                    })
+                  }
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  placeholder="e.g., $299 or One-time payment"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Custom text shown on pricing page for lifetime option
+                </p>
               </div>
             </div>
           </div>
@@ -877,12 +922,14 @@ export function TiersClient() {
                   </td>
                   <td className="p-4">
                     <div className="text-sm">
-                      {tier.price_monthly !== null ? (
+                      {tier.price_yearly !== null || tier.price_lifetime !== null ? (
                         <>
-                          <p>${tier.price_monthly}/mo</p>
                           {tier.price_yearly !== null && (
+                            <p>{tier.price_yearly_display || `$${tier.price_yearly}/yr`}</p>
+                          )}
+                          {tier.price_lifetime !== null && (
                             <p className="text-muted-foreground">
-                              ${tier.price_yearly}/yr
+                              {tier.price_lifetime_display || `$${tier.price_lifetime} lifetime`}
                             </p>
                           )}
                         </>

@@ -3,9 +3,15 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { createSession, setSessionCookie } from "@/lib/session";
 
 export async function GET(request: NextRequest) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const redirect = searchParams.get("redirect") || "/";
+
+  // Use the configured site URL, falling back to x-forwarded-host, then request origin
+  const forwardedHost = request.headers.get("x-forwarded-host");
+  const origin = process.env.NEXT_PUBLIC_SITE_URL
+    || (forwardedHost ? `https://${forwardedHost}` : null)
+    || new URL(request.url).origin;
 
   if (code) {
     const supabase = await createClient();

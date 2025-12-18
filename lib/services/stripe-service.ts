@@ -15,6 +15,8 @@ import type {
   PaymentType,
   AccessTierWithStripe,
   AccessTierFull,
+  AccessTierForPricing,
+  StripePriceInfo,
   TierFeature,
 } from "@/lib/types";
 
@@ -95,9 +97,11 @@ export async function createCheckoutSession(params: {
   priceType: "yearly" | "lifetime";
   successUrl: string;
   cancelUrl: string;
+  promoCode?: string;
 }): Promise<{ sessionId: string; url: string }> {
-  const { userId, email, name, tierId, priceType, successUrl, cancelUrl } = params;
+  const { userId, email, name, tierId, priceType, successUrl, cancelUrl, promoCode } = params;
   const supabase = createServiceClient();
+  const stripe = await getStripe();
 
   // Get the tier with Stripe price IDs
   const { data: tier, error: tierError } = await supabase
@@ -139,7 +143,41 @@ export async function createCheckoutSession(params: {
       tier_id: tierId,
       price_type: priceType,
     },
+    allow_promotion_codes: !promoCode, // Allow user to enter codes if none provided
   };
+
+  // If a promo code was provided, look up and apply it
+  if (promoCode) {
+    try {
+      // Look up the promotion code
+      const promoCodes = await stripe.promotionCodes.list({
+        code: promoCode,
+        active: true,
+        limit: 1,
+      });
+
+      if (promoCodes.data.length === 0) {
+        throw new Error(`Invalid promo code: ${promoCode}`);
+      }
+
+      const promotionCode = promoCodes.data[0];
+
+      // Apply the discount
+      if (priceType === "yearly") {
+        // For subscriptions, use discounts
+        sessionParams.discounts = [{ promotion_code: promotionCode.id }];
+      } else {
+        // For one-time payments, use discounts as well
+        sessionParams.discounts = [{ promotion_code: promotionCode.id }];
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("Invalid promo code")) {
+        throw error;
+      }
+      console.error("[StripeService] Error looking up promo code:", error);
+      throw new Error(`Invalid or expired promo code: ${promoCode}`);
+    }
+  }
 
   // For one-time payments, set invoice creation for receipt
   if (priceType === "lifetime") {
@@ -148,7 +186,6 @@ export async function createCheckoutSession(params: {
     };
   }
 
-  const stripe = await getStripe();
   const session = await stripe.checkout.sessions.create(sessionParams);
 
   return {
@@ -658,6 +695,81 @@ export async function getAccessTiersForPricing(): Promise<AccessTierFull[]> {
       .filter((f) => f.is_active)
       .sort((a, b) => a.sort_order - b.sort_order),
   })) as AccessTierFull[];
+}
+
+/**
+ * Format price amount for display
+ */
+function formatPrice(amount: number, currency: string): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency.toUpperCase(),
+  }).format(amount / 100);
+}
+
+/**
+ * Fetch a single Stripe price by ID
+ */
+async function fetchStripePrice(priceId: string): Promise<StripePriceInfo | null> {
+  try {
+    const stripe = await getStripe();
+    const price = await stripe.prices.retrieve(priceId);
+
+    if (!price.active || price.unit_amount === null) {
+      return null;
+    }
+
+    return {
+      id: price.id,
+      amount: price.unit_amount,
+      currency: price.currency,
+      interval: price.recurring?.interval as "month" | "year" | undefined,
+      formatted: formatPrice(price.unit_amount, price.currency),
+    };
+  } catch (error) {
+    console.error(`[StripeService] Error fetching price ${priceId}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Get access tiers with live Stripe pricing data
+ * This fetches actual prices from Stripe to ensure pricing page is accurate
+ */
+export async function getAccessTiersWithLivePricing(): Promise<AccessTierForPricing[]> {
+  // First get tiers with features from database
+  const tiers = await getAccessTiersForPricing();
+
+  // Collect all price IDs that need to be fetched
+  const priceIds: string[] = [];
+  tiers.forEach((tier) => {
+    if (tier.stripe_price_id_yearly) priceIds.push(tier.stripe_price_id_yearly);
+    if (tier.stripe_price_id_lifetime) priceIds.push(tier.stripe_price_id_lifetime);
+  });
+
+  // Fetch all prices in parallel
+  const pricePromises = priceIds.map((id) => fetchStripePrice(id));
+  const prices = await Promise.all(pricePromises);
+
+  // Create a map of price ID to price info
+  const priceMap = new Map<string, StripePriceInfo>();
+  priceIds.forEach((id, index) => {
+    const price = prices[index];
+    if (price) {
+      priceMap.set(id, price);
+    }
+  });
+
+  // Attach live pricing to tiers
+  return tiers.map((tier) => ({
+    ...tier,
+    stripe_yearly_price: tier.stripe_price_id_yearly
+      ? priceMap.get(tier.stripe_price_id_yearly) || null
+      : null,
+    stripe_lifetime_price: tier.stripe_price_id_lifetime
+      ? priceMap.get(tier.stripe_price_id_lifetime) || null
+      : null,
+  }));
 }
 
 /**

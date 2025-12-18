@@ -64,6 +64,8 @@ export interface AccessTier {
   price_lifetime_display: string | null;
   sort_order: number;
   is_active: boolean;
+  is_archived: boolean;
+  archived_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -406,6 +408,25 @@ export interface AccessTierWithStripe extends AccessTier {
   stripe_price_id_lifetime: string | null;
 }
 
+/**
+ * Price info fetched directly from Stripe
+ */
+export interface StripePriceInfo {
+  id: string;
+  amount: number; // in cents
+  currency: string;
+  interval?: "month" | "year" | null; // null for one-time
+  formatted: string; // e.g., "$99.99"
+}
+
+/**
+ * Access tier with live Stripe pricing data
+ */
+export interface AccessTierWithLivePricing extends AccessTierWithStripe {
+  stripe_yearly_price?: StripePriceInfo | null;
+  stripe_lifetime_price?: StripePriceInfo | null;
+}
+
 // =============================================================================
 // Tier Features & Management Types
 // =============================================================================
@@ -433,6 +454,14 @@ export interface AccessTierFull extends AccessTierWithStripe {
   highlight_label: string | null;
   cta_text: string;
   features?: TierFeature[];
+}
+
+/**
+ * Access tier with live Stripe pricing for pricing page
+ */
+export interface AccessTierForPricing extends AccessTierFull {
+  stripe_yearly_price?: StripePriceInfo | null;
+  stripe_lifetime_price?: StripePriceInfo | null;
 }
 
 /**

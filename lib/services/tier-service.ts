@@ -239,6 +239,56 @@ export async function toggleTierActive(
 }
 
 /**
+ * Archive a tier (soft delete for tiers that can't be fully deleted)
+ */
+export async function archiveTier(
+  id: string
+): Promise<{ success: boolean; error: string | null }> {
+  const supabase = createServiceClient();
+
+  const { error } = await supabase
+    .from("access_tiers")
+    .update({
+      is_archived: true,
+      archived_at: new Date().toISOString(),
+      is_active: false, // Also deactivate when archiving
+      show_on_pricing: false, // Hide from pricing page
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("[TierService] Error archiving tier:", error);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, error: null };
+}
+
+/**
+ * Unarchive a tier
+ */
+export async function unarchiveTier(
+  id: string
+): Promise<{ success: boolean; error: string | null }> {
+  const supabase = createServiceClient();
+
+  const { error } = await supabase
+    .from("access_tiers")
+    .update({
+      is_archived: false,
+      archived_at: null,
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("[TierService] Error unarchiving tier:", error);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, error: null };
+}
+
+/**
  * Reorder tiers by providing an array of tier IDs in desired order
  */
 export async function reorderTiers(

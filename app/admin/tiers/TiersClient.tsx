@@ -17,6 +17,8 @@ import {
   Check,
   X,
   Star,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -805,6 +807,22 @@ export function TiersClient() {
     }
   };
 
+  const handleArchiveTier = async (tier: TierWithFeatures) => {
+    const action = tier.is_archived ? "unarchive" : "archive";
+    const method = tier.is_archived ? "DELETE" : "POST";
+
+    const res = await fetch(`/api/admin/tiers/${tier.id}/archive`, {
+      method,
+    });
+
+    if (res.ok) {
+      fetchTiers();
+    } else {
+      const { error } = await res.json();
+      alert(error || `Failed to ${action} tier`);
+    }
+  };
+
   if (loading) {
     return <PageLoading message="Loading tiers..." />;
   }
@@ -905,20 +923,26 @@ export function TiersClient() {
                     </div>
                   </td>
                   <td className="p-4">
-                    <span
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-                        tier.is_active
-                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                          : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
-                      }`}
-                    >
-                      {tier.is_active ? (
-                        <ToggleRight className="h-3 w-3" />
-                      ) : (
-                        <ToggleLeft className="h-3 w-3" />
-                      )}
-                      {tier.is_active ? "Active" : "Inactive"}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                          tier.is_archived
+                            ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+                            : tier.is_active
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400"
+                        }`}
+                      >
+                        {tier.is_archived ? (
+                          <Archive className="h-3 w-3" />
+                        ) : tier.is_active ? (
+                          <ToggleRight className="h-3 w-3" />
+                        ) : (
+                          <ToggleLeft className="h-3 w-3" />
+                        )}
+                        {tier.is_archived ? "Archived" : tier.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </div>
                   </td>
                   <td className="p-4">
                     <div className="text-sm">
@@ -989,6 +1013,7 @@ export function TiersClient() {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => handleToggleActive(tier)}
+                            disabled={tier.is_archived}
                           >
                             {tier.is_active ? (
                               <>
@@ -1002,10 +1027,26 @@ export function TiersClient() {
                               </>
                             )}
                           </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleArchiveTier(tier)}
+                          >
+                            {tier.is_archived ? (
+                              <>
+                                <ArchiveRestore className="h-4 w-4 mr-2" />
+                                Unarchive
+                              </>
+                            ) : (
+                              <>
+                                <Archive className="h-4 w-4 mr-2" />
+                                Archive
+                              </>
+                            )}
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => setDeleteTier(tier)}
                             className="text-red-600"
+                            disabled={tier.is_archived}
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
                             Delete

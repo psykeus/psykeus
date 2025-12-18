@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const user = await requireUser();
 
     const body = await request.json();
-    const { tier_id, price_type, success_url, cancel_url } = body;
+    const { tier_id, price_type, success_url, cancel_url, promo_code } = body;
 
     if (!tier_id || !price_type) {
       return NextResponse.json(
@@ -42,6 +42,7 @@ export async function POST(request: Request) {
       priceType: price_type,
       successUrl: success_url || `${appUrl}/account?payment=success`,
       cancelUrl: cancel_url || `${appUrl}/pricing?payment=canceled`,
+      promoCode: promo_code,
     });
 
     return NextResponse.json(session);

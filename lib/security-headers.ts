@@ -34,8 +34,11 @@ function buildCSP(): string {
     "connect-src": [
       "'self'",
       supabaseUrl,
+      supabaseUrl.replace("https://", "wss://"), // WebSocket for Supabase Realtime
       "*.supabase.co",
       "*.supabase.in",
+      "*.brandgears.com", // Self-hosted Supabase
+      "wss://*.brandgears.com", // WebSocket for self-hosted Supabase
     ].filter(Boolean),
     "frame-src": ["'self'"],
     "object-src": ["'none'"],

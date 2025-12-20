@@ -57,6 +57,8 @@ export function JobDetailsClient({ initialJob }: Props) {
   const [failedItems, setFailedItems] = useState<ImportItem[]>([]);
   const [aiStats, setAiStats] = useState<{ requested: number; generated: number; failed: number } | null>(null);
   const [currentFile, setCurrentFile] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState<string | null>(null);
+  const [lastActivity, setLastActivity] = useState<{ message: string; time: Date } | null>(null);
   const [eta, setEta] = useState<number | null>(null);
   const [itemsPerMinute, setItemsPerMinute] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -137,6 +139,28 @@ export function JobDetailsClient({ initialJob }: Props) {
             setItemsPerMinute((data.data.items_per_minute as number) ?? null);
             break;
 
+          case "item:started":
+            setCurrentFile((data.data.filename as string) ?? null);
+            setCurrentStep("Starting...");
+            setLastActivity({ message: `Started: ${data.data.filename}`, time: new Date() });
+            break;
+
+          case "item:step":
+            setCurrentFile((data.data.filename as string) ?? null);
+            setCurrentStep((data.data.step_label as string) ?? null);
+            setLastActivity({
+              message: `${data.data.step_label}: ${data.data.filename}`,
+              time: new Date()
+            });
+            break;
+
+          case "activity:update":
+            setLastActivity({
+              message: data.data.message as string,
+              time: new Date()
+            });
+            break;
+
           case "job:completed":
           case "job:failed":
           case "job:cancelled":
@@ -206,6 +230,15 @@ export function JobDetailsClient({ initialJob }: Props) {
     // Also fetch job data to get AI stats (especially for completed jobs)
     fetchJobProgress();
   }, [fetchItems, fetchJobProgress]);
+
+  // Update "X seconds ago" display periodically
+  const [, setTick] = useState(0);
+  const jobIsActive = job.status === "processing" || job.status === "scanning";
+  useEffect(() => {
+    if (!jobIsActive || !lastActivity) return;
+    const interval = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, [jobIsActive, lastActivity]);
 
   // Actions
   const handleStart = async () => {
@@ -481,10 +514,39 @@ export function JobDetailsClient({ initialJob }: Props) {
             <Progress value={progress} className="h-3" />
           </div>
 
-          {/* Current File */}
-          {currentFile && isActive && (
-            <div className="text-sm text-muted-foreground truncate">
-              Processing: {currentFile}
+          {/* Current File & Step - Live Activity Indicator */}
+          {isActive && (
+            <div className="bg-muted/30 rounded-lg p-3 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                  <div className="absolute inset-0 h-2 w-2 rounded-full bg-green-500 animate-ping opacity-75" />
+                </div>
+                <span className="text-sm font-medium text-green-600 dark:text-green-400">
+                  Processing
+                </span>
+              </div>
+              {currentFile && (
+                <div className="text-sm truncate">
+                  <span className="text-muted-foreground">File: </span>
+                  <span className="font-medium">{currentFile}</span>
+                </div>
+              )}
+              {currentStep && (
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Step: </span>
+                  <span className="font-medium text-primary">{currentStep}</span>
+                </div>
+              )}
+              {lastActivity && (
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Clock className="h-3 w-3" />
+                  <span>{lastActivity.message}</span>
+                  <span className="opacity-50">
+                    ({Math.round((Date.now() - lastActivity.time.getTime()) / 1000)}s ago)
+                  </span>
+                </div>
+              )}
             </div>
           )}
 

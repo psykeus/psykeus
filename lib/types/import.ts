@@ -423,10 +423,12 @@ export type ImportEventType =
   | "scan:progress"
   | "scan:completed"
   | "item:started"
+  | "item:step"       // Per-item progress step (reading, preview, AI, upload)
   | "item:completed"
   | "item:failed"
   | "item:skipped"
   | "progress:update"
+  | "activity:update" // Real-time activity indicator for long operations
   | "checkpoint:saved";
 
 export interface ImportEvent {

@@ -25,6 +25,12 @@ const PREVIEW_MAX_SIZE = 1200;
 // Default timeout for preview generation (30 seconds)
 const DEFAULT_TIMEOUT_MS = 30000;
 
+// Triangle limits for 3D preview generation to prevent memory overflow
+// Models with more triangles than MAX will skip preview entirely
+// Models between TARGET and MAX will be subsampled to TARGET
+const MAX_TRIANGLES_FOR_PREVIEW = 500000;  // 500K triangles max
+const TARGET_TRIANGLES_FOR_PREVIEW = 100000; // Subsample to 100K if over this
+
 /**
  * Creates a promise that rejects after the specified timeout
  */
@@ -1066,6 +1072,37 @@ export async function generateGltfMultiViewPreview(buffer: Buffer, type: string)
 }
 
 /**
+ * Subsample triangles for very complex models to prevent memory overflow
+ * Uses spatial hashing to maintain visual fidelity while reducing count
+ * @param triangles - Original triangle array
+ * @param targetCount - Target number of triangles
+ * @returns Subsampled triangle array
+ */
+function subsampleTriangles(triangles: StlTriangle[], targetCount: number): StlTriangle[] {
+  if (triangles.length <= targetCount) return triangles;
+
+  // Calculate sampling ratio
+  const ratio = targetCount / triangles.length;
+
+  // Use deterministic sampling for consistent results
+  // Sample every Nth triangle, with slight randomization to avoid aliasing artifacts
+  const step = Math.floor(1 / ratio);
+  const sampled: StlTriangle[] = [];
+
+  for (let i = 0; i < triangles.length; i += step) {
+    // Add slight offset based on position to avoid regular patterns
+    const offset = Math.floor((triangles[i].vertices[0].x * 7 + triangles[i].vertices[0].y * 11) % step);
+    const idx = Math.min(i + offset, triangles.length - 1);
+    sampled.push(triangles[idx]);
+
+    if (sampled.length >= targetCount) break;
+  }
+
+  console.log(`[PREVIEW] Subsampled ${triangles.length.toLocaleString()} triangles to ${sampled.length.toLocaleString()}`);
+  return sampled;
+}
+
+/**
  * Shared multi-view renderer for 3D models
  * Enhanced with supersampling anti-aliasing, better lighting, and high resolution
  * @param triangles - Array of triangles to render
@@ -1078,6 +1115,19 @@ async function renderMultiViewPreview(
   createCanvas: any,
   viewCount: 4 | 6
 ): Promise<PreviewResult> {
+  // Check triangle count limits to prevent memory overflow
+  if (triangles.length > MAX_TRIANGLES_FOR_PREVIEW) {
+    console.log(`[PREVIEW] Skipping preview: ${triangles.length.toLocaleString()} triangles exceeds limit of ${MAX_TRIANGLES_FOR_PREVIEW.toLocaleString()}`);
+    return {
+      success: false,
+      error: `Model too complex for preview (${triangles.length.toLocaleString()} triangles, max ${MAX_TRIANGLES_FOR_PREVIEW.toLocaleString()})`,
+    };
+  }
+
+  // Subsample if over target but under max
+  if (triangles.length > TARGET_TRIANGLES_FOR_PREVIEW) {
+    triangles = subsampleTriangles(triangles, TARGET_TRIANGLES_FOR_PREVIEW);
+  }
   // Calculate bounding box
   let minX = Infinity, minY = Infinity, minZ = Infinity;
   let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;

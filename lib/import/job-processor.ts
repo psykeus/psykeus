@@ -83,6 +83,52 @@ function emitEvent(jobId: string, event: ImportEvent): void {
 }
 
 /**
+ * Emit a per-item step event to show granular progress
+ */
+function emitItemStep(
+  jobId: string,
+  filename: string,
+  step: "reading" | "hash" | "preview" | "ai_metadata" | "uploading" | "saving",
+  detail?: string
+): void {
+  const stepLabels: Record<string, string> = {
+    reading: "Reading file",
+    hash: "Computing hash",
+    preview: "Generating preview",
+    ai_metadata: "AI metadata extraction",
+    uploading: "Uploading to storage",
+    saving: "Saving to database",
+  };
+
+  emitEvent(jobId, {
+    type: "item:step",
+    job_id: jobId,
+    timestamp: new Date().toISOString(),
+    data: {
+      filename,
+      step,
+      step_label: stepLabels[step] || step,
+      detail,
+    },
+  });
+}
+
+/**
+ * Emit an activity update for real-time feedback during long operations
+ */
+function emitActivity(jobId: string, message: string, filename?: string): void {
+  emitEvent(jobId, {
+    type: "activity:update",
+    job_id: jobId,
+    timestamp: new Date().toISOString(),
+    data: {
+      message,
+      filename,
+    },
+  });
+}
+
+/**
  * Active job processors (for pause/cancel support)
  */
 const activeProcessors = new Map<string, { paused: boolean; cancelled: boolean }>();
@@ -579,7 +625,16 @@ async function processItem(
     // Mark as processing
     await itemService.markItemProcessing(item.id);
 
+    // Emit item started event
+    emitEvent(item.job_id, {
+      type: "item:started",
+      job_id: item.job_id,
+      timestamp: new Date().toISOString(),
+      data: { filename: item.filename, item_id: item.id },
+    });
+
     // Read file
+    emitItemStep(item.job_id, item.filename, "reading");
     let buffer: Buffer;
     try {
       buffer = await fs.readFile(item.source_path);
@@ -601,6 +656,7 @@ async function processItem(
     }
 
     // Compute hash for duplicate detection
+    emitItemStep(item.job_id, item.filename, "hash");
     const contentHash = crypto.createHash("sha256").update(buffer).digest("hex");
     stepsCompleted.push("hash_computed");
     logDetails.duplicate_hash = contentHash;
@@ -652,6 +708,7 @@ async function processItem(
 
     if ((options.generate_previews || needsPreviewForAI) && supportsPreview(fileExt)) {
       try {
+        emitItemStep(item.job_id, item.filename, "preview");
         const previewResult = await generatePreview(buffer, fileExt, item.filename);
         if (previewResult.success && previewResult.buffer) {
           previewBuffer = previewResult.buffer;
@@ -730,6 +787,7 @@ async function processItem(
     let aiMetadataActuallyGenerated = false;
 
     if (options.generate_ai_metadata) {
+      emitItemStep(item.job_id, item.filename, "ai_metadata");
       console.log(`[IMPORT] Starting AI metadata extraction for ${item.filename}`);
       try {
         const is3DFile = [".stl", ".obj", ".gltf", ".glb", ".3mf"].includes(fileExt);
@@ -949,6 +1007,7 @@ async function processItem(
     stepsCompleted.push("design_created");
 
     // Upload file to storage
+    emitItemStep(item.job_id, item.filename, "uploading");
     const storagePath = `files/${design.id}/v1${fileExt}`;
     const { error: uploadError } = await supabase.storage
       .from("designs")
@@ -997,6 +1056,7 @@ async function processItem(
     }
 
     // Create design_files record
+    emitItemStep(item.job_id, item.filename, "saving");
     const { data: designFile, error: fileError } = await supabase
       .from("design_files")
       .insert({

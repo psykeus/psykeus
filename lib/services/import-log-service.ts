@@ -9,6 +9,7 @@
  */
 
 import { createServiceClient } from "@/lib/supabase/server";
+import { escapeIlikePattern } from "@/lib/validations";
 import type {
   ImportLog,
   ImportLogStatus,
@@ -161,6 +162,33 @@ export async function markLogProcessing(logId: string): Promise<ImportLog | null
 }
 
 /**
+ * Calculate processing duration for a log entry.
+ * Fetches the log's processing_started_at and calculates duration from now.
+ *
+ * @param logId - Log entry ID
+ * @returns Object with completedAt timestamp and durationMs (or null if not started)
+ */
+async function calculateProcessingDuration(
+  logId: string
+): Promise<{ completedAt: string; durationMs: number | null }> {
+  const now = new Date().toISOString();
+  const supabase = createServiceClient();
+
+  const { data: current } = await supabase
+    .from("import_logs")
+    .select("processing_started_at")
+    .eq("id", logId)
+    .single();
+
+  let durationMs: number | null = null;
+  if (current?.processing_started_at) {
+    durationMs = new Date(now).getTime() - new Date(current.processing_started_at).getTime();
+  }
+
+  return { completedAt: now, durationMs };
+}
+
+/**
  * Mark a log as succeeded with result details.
  *
  * @param logId - Log entry ID
@@ -176,20 +204,7 @@ export async function markLogSucceeded(
     details?: Partial<ImportLogDetails>;
   }
 ): Promise<ImportLog | null> {
-  const now = new Date().toISOString();
-
-  // Get current log to calculate duration
-  const supabase = createServiceClient();
-  const { data: current } = await supabase
-    .from("import_logs")
-    .select("processing_started_at")
-    .eq("id", logId)
-    .single();
-
-  let durationMs: number | null = null;
-  if (current?.processing_started_at) {
-    durationMs = new Date(now).getTime() - new Date(current.processing_started_at).getTime();
-  }
+  const { completedAt, durationMs } = await calculateProcessingDuration(logId);
 
   return updateImportLog(logId, {
     status: "succeeded",
@@ -197,7 +212,7 @@ export async function markLogSucceeded(
     design_file_id: result.design_file_id || null,
     steps_completed: result.steps_completed,
     details: result.details || {},
-    processing_completed_at: now,
+    processing_completed_at: completedAt,
     processing_duration_ms: durationMs,
   });
 }
@@ -217,26 +232,14 @@ export async function markLogFailed(
     details?: Partial<ImportLogDetails>;
   }
 ): Promise<ImportLog | null> {
-  const now = new Date().toISOString();
-
-  const supabase = createServiceClient();
-  const { data: current } = await supabase
-    .from("import_logs")
-    .select("processing_started_at")
-    .eq("id", logId)
-    .single();
-
-  let durationMs: number | null = null;
-  if (current?.processing_started_at) {
-    durationMs = new Date(now).getTime() - new Date(current.processing_started_at).getTime();
-  }
+  const { completedAt, durationMs } = await calculateProcessingDuration(logId);
 
   return updateImportLog(logId, {
     status: "failed",
     reason: error.reason,
     steps_completed: error.steps_completed,
     details: error.details || {},
-    processing_completed_at: now,
+    processing_completed_at: completedAt,
     processing_duration_ms: durationMs,
   });
 }
@@ -365,7 +368,8 @@ export async function getImportLogs(
   }
 
   if (filters.search) {
-    query = query.or(`filename.ilike.%${filters.search}%,file_path.ilike.%${filters.search}%`);
+    const escapedSearch = escapeIlikePattern(filters.search);
+    query = query.or(`filename.ilike.%${escapedSearch}%,file_path.ilike.%${escapedSearch}%`);
   }
 
   // Apply ordering

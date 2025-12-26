@@ -42,19 +42,20 @@ import {
   Settings2,
   ChevronDown,
   ChevronRight,
-  ChevronUp,
   HelpCircle,
   Zap,
   Shield,
   FolderTree,
   RefreshCw,
   ImageIcon,
-  GripVertical,
   Clock,
   Calendar,
 } from "lucide-react";
-import type { ScanResult, DetectedProjectPreview, ProcessingOptions, ScheduleImportOptions } from "@/lib/types/import";
+import type { ScanResult, ProcessingOptions, ScheduleImportOptions } from "@/lib/types/import";
 import { DEFAULT_PROCESSING_OPTIONS } from "@/lib/types/import";
+
+// Import extracted components
+import { ProjectRow, OptionRow, PreviewPriorityList } from "./components";
 
 type WizardStep = "source" | "scan" | "review" | "options" | "processing";
 
@@ -1177,149 +1178,4 @@ export function ImportWizard() {
   );
 }
 
-function ProjectRow({
-  project,
-  selected,
-  onToggle,
-}: {
-  project: DetectedProjectPreview;
-  selected: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <div
-      className={`flex items-center gap-3 p-2 rounded cursor-pointer hover:bg-muted/50 ${
-        selected ? "bg-primary/5" : ""
-      }`}
-      onClick={onToggle}
-    >
-      <Checkbox checked={selected} />
-      <div className="flex-1 min-w-0">
-        <div className="font-medium truncate">{project.inferred_name}</div>
-        <div className="text-xs text-muted-foreground">
-          {project.files.length} file{project.files.length !== 1 ? "s" : ""} &middot;{" "}
-          {project.detection_reason} &middot; {Math.round(project.confidence * 100)}% confidence
-        </div>
-      </div>
-      {project.primary_file && (
-        <Badge variant="outline" className="text-xs">
-          {project.primary_file.file_type.toUpperCase()}
-        </Badge>
-      )}
-    </div>
-  );
-}
-
-/**
- * Reusable option row component for the core settings
- */
-function OptionRow({
-  id,
-  icon,
-  label,
-  description,
-  checked,
-  onChange,
-  badge,
-  disabled,
-}: {
-  id: string;
-  icon: React.ReactNode;
-  label: string;
-  description: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  badge?: string;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="flex items-start space-x-3">
-      <Checkbox
-        id={id}
-        checked={checked}
-        onCheckedChange={(checked) => onChange(!!checked)}
-        disabled={disabled}
-        className="mt-1"
-      />
-      <div className="grid gap-1 flex-1">
-        <Label
-          htmlFor={id}
-          className={`flex items-center gap-2 cursor-pointer ${disabled ? "opacity-50" : ""}`}
-        >
-          {icon}
-          {label}
-          {badge && (
-            <Badge variant="secondary" className="text-xs font-normal">
-              {badge}
-            </Badge>
-          )}
-        </Label>
-        <p className={`text-xs text-muted-foreground ${disabled ? "opacity-50" : ""}`}>
-          {description}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Preview priority list with drag-like reordering
- */
-function PreviewPriorityList({
-  priority,
-  onChange,
-}: {
-  priority: string[];
-  onChange: (newPriority: string[]) => void;
-}) {
-  const moveUp = (index: number) => {
-    if (index === 0) return;
-    const newPriority = [...priority];
-    [newPriority[index - 1], newPriority[index]] = [newPriority[index], newPriority[index - 1]];
-    onChange(newPriority);
-  };
-
-  const moveDown = (index: number) => {
-    if (index === priority.length - 1) return;
-    const newPriority = [...priority];
-    [newPriority[index], newPriority[index + 1]] = [newPriority[index + 1], newPriority[index]];
-    onChange(newPriority);
-  };
-
-  return (
-    <div className="border rounded-lg divide-y bg-card">
-      {priority.map((type, index) => (
-        <div
-          key={type}
-          className="flex items-center gap-2 px-3 py-2 text-sm"
-        >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
-          <span className="flex-1 font-mono uppercase">{type}</span>
-          <Badge variant="outline" className="text-xs">
-            #{index + 1}
-          </Badge>
-          <div className="flex gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0"
-              onClick={() => moveUp(index)}
-              disabled={index === 0}
-            >
-              <ChevronUp className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0"
-              onClick={() => moveDown(index)}
-              disabled={index === priority.length - 1}
-            >
-              <ChevronDown className="h-3 w-3" />
-            </Button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+// ProjectRow, OptionRow, and PreviewPriorityList are now imported from ./components

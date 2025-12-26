@@ -3,7 +3,8 @@
  * CRUD operations for individual files within an import job
  */
 
-import { createServiceClient, createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
+import { escapeIlikePattern } from "@/lib/validations";
 import type {
   ImportItem,
   ImportItemStatus,
@@ -64,9 +65,10 @@ export async function createImportItems(
 
 /**
  * Get an import item by ID
+ * Uses service client to bypass RLS since API routes handle auth
  */
 export async function getImportItem(itemId: string): Promise<ImportItem | null> {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const { data, error } = await supabase
     .from("import_items")
@@ -84,11 +86,12 @@ export async function getImportItem(itemId: string): Promise<ImportItem | null> 
 
 /**
  * Get an import item with its detected project
+ * Uses service client to bypass RLS since API routes handle auth
  */
 export async function getImportItemWithProject(
   itemId: string
 ): Promise<ImportItemWithProject | null> {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   const { data, error } = await supabase
     .from("import_items")
@@ -111,13 +114,14 @@ export async function getImportItemWithProject(
 
 /**
  * List import items for a job
+ * Uses service client to bypass RLS since API routes handle auth
  */
 export async function listImportItems(
   jobId: string,
   filters?: ImportItemFilters,
   options?: { limit?: number; offset?: number }
 ): Promise<{ items: ImportItem[]; total: number }> {
-  const supabase = await createClient();
+  const supabase = createServiceClient();
 
   let query = supabase
     .from("import_items")
@@ -138,7 +142,8 @@ export async function listImportItems(
   }
 
   if (filters?.search) {
-    query = query.ilike("filename", `%${filters.search}%`);
+    const escapedSearch = escapeIlikePattern(filters.search);
+    query = query.ilike("filename", `%${escapedSearch}%`);
   }
 
   if (options?.limit) {

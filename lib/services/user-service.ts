@@ -6,6 +6,7 @@
  */
 
 import { createServiceClient } from "@/lib/supabase/server";
+import { escapeIlikePattern } from "@/lib/validations";
 import type {
   User,
   UserWithTier,
@@ -585,7 +586,8 @@ export async function getUsers(options: {
     `, { count: "exact" });
 
   if (search) {
-    query = query.or(`email.ilike.%${search}%,name.ilike.%${search}%`);
+    const escapedSearch = escapeIlikePattern(search);
+    query = query.or(`email.ilike.%${escapedSearch}%,name.ilike.%${escapedSearch}%`);
   }
 
   if (status) {

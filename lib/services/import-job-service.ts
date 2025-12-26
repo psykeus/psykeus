@@ -182,28 +182,43 @@ export async function updateJobProgress(
 }
 
 /**
- * Increment a specific counter
+ * Increment a specific counter atomically
+ * Uses PostgreSQL RPC function to prevent race conditions
  */
 export async function incrementJobCounter(
   jobId: string,
   counter: "files_processed" | "files_succeeded" | "files_failed" | "files_skipped"
-): Promise<void> {
+): Promise<number> {
   const supabase = createServiceClient();
 
-  // Use RPC for atomic increment (or fall back to read-update)
-  const { data: job } = await supabase
-    .from("import_jobs")
-    .select(counter)
-    .eq("id", jobId)
-    .single();
+  const { data, error } = await supabase.rpc("increment_import_job_counter", {
+    p_job_id: jobId,
+    p_counter: counter,
+  });
 
-  if (job) {
-    const currentValue = (job as Record<string, number>)[counter] || 0;
-    await supabase
+  if (error) {
+    // Fallback to non-atomic update if RPC function doesn't exist
+    // This allows the code to work before the migration is run
+    console.warn("Atomic increment RPC failed, falling back to non-atomic update:", error.message);
+    const { data: job } = await supabase
       .from("import_jobs")
-      .update({ [counter]: currentValue + 1 })
-      .eq("id", jobId);
+      .select(counter)
+      .eq("id", jobId)
+      .single();
+
+    if (job) {
+      const currentValue = (job as Record<string, number>)[counter] || 0;
+      const newValue = currentValue + 1;
+      await supabase
+        .from("import_jobs")
+        .update({ [counter]: newValue })
+        .eq("id", jobId);
+      return newValue;
+    }
+    return 0;
   }
+
+  return data as number;
 }
 
 /**

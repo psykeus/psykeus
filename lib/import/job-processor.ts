@@ -1,11 +1,16 @@
 /**
  * Job Processor
- * Main orchestrator for processing import jobs with concurrent workers
+ *
+ * Main orchestrator for processing import jobs with concurrent workers.
+ * Handles file processing, duplicate detection, preview generation,
+ * AI metadata extraction, and project bundling.
+ *
+ * Updated: 2025-12-26
+ * AI Model: Claude Opus 4.5 (claude-opus-4-5-20251101)
  */
 
 import { createServiceClient } from "@/lib/supabase/server";
 import {
-  isSupportedExtension,
   getFileExtension,
   generateSlug,
   getMimeType,
@@ -14,7 +19,15 @@ import {
 } from "@/lib/file-types";
 import { generatePreview, supportsPreview } from "@/lib/preview-generator";
 import { extractAIMetadata, extract3DModelMetadata, type Model3DContext } from "@/lib/ai-metadata";
-import { analyzeGeometry, formatDimensions, formatVolume, formatSurfaceArea, estimateMaterialUsage, getComplexityDescription, type Triangle } from "@/lib/geometry-analysis";
+import {
+  analyzeGeometry,
+  formatDimensions,
+  formatVolume,
+  formatSurfaceArea,
+  estimateMaterialUsage,
+  getComplexityDescription,
+  type Triangle,
+} from "@/lib/geometry-analysis";
 import { parseStlBuffer, toGenericTriangles } from "@/lib/parsers/stl-parser";
 import { parseObjBuffer } from "@/lib/parsers/obj-parser";
 import { parseGltfBuffer } from "@/lib/parsers/gltf-parser";
@@ -24,7 +37,7 @@ import {
   generateStlMultiViewPreview,
   generateObjMultiViewPreview,
   generateGltfMultiViewPreview,
-  generate3mfMultiViewPreview
+  generate3mfMultiViewPreview,
 } from "@/lib/preview-generator";
 import crypto from "crypto";
 import fs from "fs/promises";
@@ -34,99 +47,27 @@ import * as jobService from "@/lib/services/import-job-service";
 import * as itemService from "@/lib/services/import-item-service";
 import * as logService from "@/lib/services/import-log-service";
 
+// Import from extracted modules
+import {
+  subscribeToJob,
+  emitEvent,
+  emitItemStep,
+  emitActivity,
+} from "./event-emitter";
+import { loadExistingHashes, loadExistingPhashes } from "./hash-loader";
+
+// Re-export subscribeToJob for external consumers
+export { subscribeToJob } from "./event-emitter";
+
 import type {
   ImportJob,
   ImportItem,
   ProcessingOptions,
   ProcessingProgress,
   ProcessingResult,
-  ImportEvent,
   ImportProcessingStep,
   ImportLogDetails,
 } from "@/lib/types/import";
-
-// Event emitter for real-time progress updates
-type EventCallback = (event: ImportEvent) => void;
-const eventListeners = new Map<string, Set<EventCallback>>();
-
-/**
- * Subscribe to job events
- */
-export function subscribeToJob(jobId: string, callback: EventCallback): () => void {
-  if (!eventListeners.has(jobId)) {
-    eventListeners.set(jobId, new Set());
-  }
-  eventListeners.get(jobId)!.add(callback);
-
-  return () => {
-    eventListeners.get(jobId)?.delete(callback);
-    if (eventListeners.get(jobId)?.size === 0) {
-      eventListeners.delete(jobId);
-    }
-  };
-}
-
-/**
- * Emit an event to all subscribers
- */
-function emitEvent(jobId: string, event: ImportEvent): void {
-  const listeners = eventListeners.get(jobId);
-  if (listeners) {
-    for (const callback of listeners) {
-      try {
-        callback(event);
-      } catch (err) {
-        console.error("Event callback error:", err);
-      }
-    }
-  }
-}
-
-/**
- * Emit a per-item step event to show granular progress
- */
-function emitItemStep(
-  jobId: string,
-  filename: string,
-  step: "reading" | "hash" | "preview" | "ai_metadata" | "uploading" | "saving",
-  detail?: string
-): void {
-  const stepLabels: Record<string, string> = {
-    reading: "Reading file",
-    hash: "Computing hash",
-    preview: "Generating preview",
-    ai_metadata: "AI metadata extraction",
-    uploading: "Uploading to storage",
-    saving: "Saving to database",
-  };
-
-  emitEvent(jobId, {
-    type: "item:step",
-    job_id: jobId,
-    timestamp: new Date().toISOString(),
-    data: {
-      filename,
-      step,
-      step_label: stepLabels[step] || step,
-      detail,
-    },
-  });
-}
-
-/**
- * Emit an activity update for real-time feedback during long operations
- */
-function emitActivity(jobId: string, message: string, filename?: string): void {
-  emitEvent(jobId, {
-    type: "activity:update",
-    job_id: jobId,
-    timestamp: new Date().toISOString(),
-    data: {
-      message,
-      filename,
-    },
-  });
-}
 
 /**
  * Active job processors (for pause/cancel support)
@@ -1200,88 +1141,7 @@ async function processItem(
   }
 }
 
-/**
- * Load existing content hashes from database
- * Returns a Map of content_hash -> design_id for duplicate detection
- */
-async function loadExistingHashes(): Promise<Map<string, string>> {
-  const supabase = createServiceClient();
-
-  const { data, error } = await supabase
-    .from("design_files")
-    .select("content_hash, design_id")
-    .eq("is_active", true)
-    .not("content_hash", "is", null);
-
-  if (error) {
-    console.error("Failed to load existing hashes:", error);
-    return new Map();
-  }
-
-  const map = new Map<string, string>();
-  for (const d of data || []) {
-    if (d.content_hash && d.design_id) {
-      map.set(d.content_hash, d.design_id);
-    }
-  }
-  return map;
-}
-
-/**
- * Load existing perceptual hashes from database
- */
-async function loadExistingPhashes(): Promise<Map<string, { design_id: string; title: string }>> {
-  const supabase = createServiceClient();
-
-  const { data, error } = await supabase
-    .from("design_files")
-    .select("preview_phash, design_id, designs!design_files_design_id_fkey(title)")
-    .eq("is_active", true)
-    .not("preview_phash", "is", null);
-
-  if (error) {
-    console.error("Failed to load existing phashes:", error);
-    return new Map();
-  }
-
-  const map = new Map<string, { design_id: string; title: string }>();
-  for (const d of data || []) {
-    if (d.preview_phash) {
-      const title = (d.designs as unknown as { title: string })?.title || "Unknown";
-      map.set(d.preview_phash, { design_id: d.design_id, title });
-    }
-  }
-
-  return map;
-}
-
-// getMimeType is now imported from @/lib/file-types
-
-/**
- * Sort items by preview type priority
- * Items with higher priority file types appear first
- */
-function sortByPreviewPriority(items: ImportItem[], priority: string[]): ImportItem[] {
-  return [...items].sort((a, b) => {
-    const aType = a.file_type?.toLowerCase() || "";
-    const bType = b.file_type?.toLowerCase() || "";
-
-    const aIndex = priority.findIndex((p) => p.toLowerCase() === aType);
-    const bIndex = priority.findIndex((p) => p.toLowerCase() === bType);
-
-    // If both are in the priority list, sort by priority
-    if (aIndex !== -1 && bIndex !== -1) {
-      return aIndex - bIndex;
-    }
-
-    // If only one is in the priority list, it comes first
-    if (aIndex !== -1) return -1;
-    if (bIndex !== -1) return 1;
-
-    // If neither is in the priority list, maintain original order
-    return 0;
-  });
-}
+// loadExistingHashes and loadExistingPhashes are now imported from ./hash-loader
 
 // Convert imported extension arrays (with dots) to lowercase without dots for comparison
 // DESIGN_EXTENSIONS and IMAGE_EXTENSIONS are imported from @/lib/file-types

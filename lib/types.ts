@@ -198,6 +198,9 @@ export interface AdminDesignListItem {
   difficulty: string | null;
   is_public: boolean;
   updated_at: string;
+  created_at?: string;
+  // Primary file type (e.g., 'svg', 'stl', 'dxf')
+  primary_file_type?: string | null;
   // Optional fields from DesignListItem - may not be included in all queries
   categories?: string[] | null;
   style?: string | null;

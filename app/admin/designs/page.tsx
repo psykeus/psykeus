@@ -12,6 +12,8 @@ interface SearchParams {
   page?: string;
   status?: string;
   perPage?: string;
+  sort?: string;
+  order?: "asc" | "desc";
 }
 
 interface Props {
@@ -30,10 +32,18 @@ export default async function AdminDesignsPage({ searchParams }: Props) {
   const q = params.q ?? "";
   const status = params.status;
 
+  // Sorting parameters
+  const validSortFields = ["title", "updated_at", "created_at", "difficulty", "is_public", "primary_file_type"];
+  const sortField = validSortFields.includes(params.sort ?? "") ? params.sort! : "updated_at";
+  const sortOrder = params.order === "asc" ? "asc" : "desc";
+
+  // Query designs with primary file type via join
   let query = supabase
     .from("designs")
-    .select("id, title, slug, preview_path, is_public, difficulty, updated_at", { count: "exact" })
-    .order("updated_at", { ascending: false });
+    .select(`
+      id, title, slug, preview_path, is_public, difficulty, updated_at, created_at,
+      primary_file:design_files!designs_primary_file_id_fkey(file_type)
+    `, { count: "exact" });
 
   if (q) {
     query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%`);
@@ -45,10 +55,43 @@ export default async function AdminDesignsPage({ searchParams }: Props) {
     query = query.eq("is_public", false);
   }
 
+  // Apply sorting - handle file_type specially since it's from a join
+  if (sortField === "primary_file_type") {
+    // For file type, we need to sort after fetching since it's a joined field
+    query = query.order("updated_at", { ascending: sortOrder === "asc" });
+  } else {
+    query = query.order(sortField, { ascending: sortOrder === "asc" });
+  }
+
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
-  const { data: designs, count } = await query.range(from, to);
+  const { data: rawDesigns, count } = await query.range(from, to);
+
+  // Transform the data to flatten the primary_file join
+  // The join returns an object (not array) when using !inner or foreign key reference
+  const designs = (rawDesigns ?? []).map((d) => {
+    const primaryFile = d.primary_file as { file_type: string } | { file_type: string }[] | null;
+    const fileType = Array.isArray(primaryFile)
+      ? primaryFile[0]?.file_type
+      : primaryFile?.file_type;
+    return {
+      ...d,
+      primary_file_type: fileType || null,
+      primary_file: undefined, // Remove the nested object
+    };
+  });
+
+  // If sorting by file type, sort the results
+  if (sortField === "primary_file_type") {
+    designs.sort((a, b) => {
+      const aType = a.primary_file_type || "";
+      const bType = b.primary_file_type || "";
+      return sortOrder === "asc"
+        ? aType.localeCompare(bType)
+        : bType.localeCompare(aType);
+    });
+  }
 
   const totalPages = Math.ceil((count ?? 0) / pageSize);
 
@@ -159,6 +202,8 @@ export default async function AdminDesignsPage({ searchParams }: Props) {
         filteredCount={count ?? 0}
         currentFilters={{ q, status }}
         recentImports={recentImports ?? []}
+        currentSort={{ field: sortField, order: sortOrder }}
+        baseUrl={`/admin/designs?${q ? `q=${q}&` : ""}${status ? `status=${status}&` : ""}perPage=${pageSize}`}
       />
 
       {/* Pagination */}

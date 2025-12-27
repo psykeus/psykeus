@@ -32,6 +32,10 @@ import {
   CheckSquare,
   FolderInput,
   ListChecks,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  FileType,
 } from "lucide-react";
 import { formatDate } from "@/lib/utils";
 import type { AdminDesignListItem } from "@/lib/types";
@@ -45,6 +49,11 @@ interface ImportJob {
   completed_at: string;
 }
 
+interface SortConfig {
+  field: string;
+  order: "asc" | "desc";
+}
+
 interface Props {
   designs: AdminDesignListItem[];
   totalCount?: number;
@@ -54,6 +63,8 @@ interface Props {
     status?: string;
   };
   recentImports?: ImportJob[];
+  currentSort?: SortConfig;
+  baseUrl?: string;
 }
 
 export function DesignsTable({
@@ -62,8 +73,40 @@ export function DesignsTable({
   filteredCount,
   currentFilters = {},
   recentImports = [],
+  currentSort = { field: "updated_at", order: "desc" },
+  baseUrl = "/admin/designs",
 }: Props) {
   const router = useRouter();
+
+  // Helper to generate sort URL
+  const getSortUrl = (field: string) => {
+    const newOrder = currentSort.field === field && currentSort.order === "desc" ? "asc" : "desc";
+    return `${baseUrl}&sort=${field}&order=${newOrder}`;
+  };
+
+  // Sortable header component
+  const SortableHeader = ({ field, children, className = "" }: { field: string; children: React.ReactNode; className?: string }) => {
+    const isActive = currentSort.field === field;
+    return (
+      <th className={`text-left p-4 font-medium ${className}`}>
+        <Link
+          href={getSortUrl(field)}
+          className="inline-flex items-center gap-1 hover:text-primary transition-colors"
+        >
+          {children}
+          {isActive ? (
+            currentSort.order === "asc" ? (
+              <ArrowUp className="h-4 w-4" />
+            ) : (
+              <ArrowDown className="h-4 w-4" />
+            )
+          ) : (
+            <ArrowUpDown className="h-4 w-4 opacity-50" />
+          )}
+        </Link>
+      </th>
+    );
+  };
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [selectLoading, setSelectLoading] = useState(false);
@@ -307,10 +350,11 @@ export function DesignsTable({
                     className={somePageSelected ? "data-[state=checked]:bg-primary/50" : ""}
                   />
                 </th>
-                <th className="text-left p-4 font-medium">Design</th>
-                <th className="text-left p-4 font-medium">Status</th>
-                <th className="text-left p-4 font-medium hidden sm:table-cell">Difficulty</th>
-                <th className="text-left p-4 font-medium hidden md:table-cell">Updated</th>
+                <SortableHeader field="title">Design</SortableHeader>
+                <SortableHeader field="primary_file_type" className="hidden lg:table-cell">Type</SortableHeader>
+                <SortableHeader field="is_public">Status</SortableHeader>
+                <SortableHeader field="difficulty" className="hidden sm:table-cell">Difficulty</SortableHeader>
+                <SortableHeader field="updated_at" className="hidden md:table-cell">Updated</SortableHeader>
                 <th className="text-left p-4 font-medium">Actions</th>
               </tr>
             </thead>
@@ -345,6 +389,15 @@ export function DesignsTable({
                         <p className="text-sm text-muted-foreground truncate">{design.slug}</p>
                       </div>
                     </div>
+                  </td>
+                  <td className="p-4 hidden lg:table-cell">
+                    {design.primary_file_type ? (
+                      <Badge variant="outline" className="font-mono text-xs uppercase">
+                        {design.primary_file_type}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </td>
                   <td className="p-4">
                     <Badge variant={design.is_public ? "default" : "secondary"}>

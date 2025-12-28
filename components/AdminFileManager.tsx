@@ -357,12 +357,10 @@ export function AdminFileManager({
     }
   };
 
-  // Group files by role
+  // Group files: primary file first, then all others
   const primaryFile = files.find((f) => f.id === primaryFileId);
-  const variants = files.filter(
-    (f) => f.file_role === "variant" && f.id !== primaryFileId
-  );
-  const components = files.filter((f) => f.file_role === "component");
+  // Show all non-primary files as "other files" regardless of their file_role
+  const otherFiles = files.filter((f) => f.id !== primaryFileId);
 
   const previewType = previewFile ? getPreviewType(previewFile.file_type) : null;
 
@@ -438,42 +436,14 @@ export function AdminFileManager({
                 </div>
               )}
 
-              {/* Variant Files */}
-              {variants.length > 0 && (
+              {/* Other Files (variants, components, additional files) */}
+              {otherFiles.length > 0 && (
                 <div>
                   <Label className="text-xs text-muted-foreground mb-2 block">
-                    Format Variants ({variants.length})
+                    Additional Files ({otherFiles.length})
                   </Label>
                   <div className="space-y-2">
-                    {variants.map((file) => (
-                      <FileItem
-                        key={file.id}
-                        file={file}
-                        designId={designId}
-                        isPrimary={false}
-                        isSettingPrimary={settingPrimary === file.id}
-                        canPreviewFile={canPreview(file.file_type)}
-                        onPreview={() => handlePreviewFile(file)}
-                        onSetPrimary={handleSetPrimary}
-                        onDelete={handleDeleteFile}
-                        onUpdateRole={handleUpdateRole}
-                        formatBytes={formatBytes}
-                        getRoleBadgeVariant={getRoleBadgeVariant}
-                        canDelete={files.length > 1}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Component Files */}
-              {components.length > 0 && (
-                <div>
-                  <Label className="text-xs text-muted-foreground mb-2 block">
-                    Components ({components.length})
-                  </Label>
-                  <div className="space-y-2">
-                    {components.map((file) => (
+                    {otherFiles.map((file) => (
                       <FileItem
                         key={file.id}
                         file={file}

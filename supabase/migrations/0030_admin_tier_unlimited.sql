@@ -57,6 +57,10 @@ ON CONFLICT (slug) DO UPDATE SET
 -- UPDATE ACCESS FUNCTIONS TO BYPASS FOR ADMINS
 -- ============================================================================
 
+-- Drop existing functions first to allow return type changes
+DROP FUNCTION IF EXISTS can_user_access_design(UUID, UUID);
+DROP FUNCTION IF EXISTS check_user_download_limit(UUID);
+
 -- Update can_user_access_design to always allow admins
 CREATE OR REPLACE FUNCTION can_user_access_design(user_uuid UUID, design_uuid UUID)
 RETURNS BOOLEAN

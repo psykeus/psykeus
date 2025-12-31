@@ -39,6 +39,7 @@ import type {
   ImportLogSummary,
   ImportLogReasonGroup,
 } from "@/lib/types/import";
+import { formatBytes, formatDuration } from "@/lib/utils";
 
 interface Props {
   jobId: string;
@@ -175,19 +176,9 @@ export function ImportLogsPanel({ jobId, jobStatus }: Props) {
     });
   };
 
-  const formatDuration = (ms: number | null) => {
-    if (!ms) return "-";
-    if (ms < 1000) return `${ms}ms`;
-    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-    return `${(ms / 60000).toFixed(1)}m`;
-  };
-
-  const formatBytes = (bytes: number | null) => {
-    if (!bytes) return "-";
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
+  // Formatting utilities imported from @/lib/utils
+  const formatDur = (ms: number | null) => formatDuration(ms, "-");
+  const formatSize = (bytes: number | null) => formatBytes(bytes, { nullValue: "-" });
 
   // Migration required message
   if (migrationRequired) {
@@ -267,7 +258,7 @@ export function ImportLogsPanel({ jobId, jobStatus }: Props) {
               </div>
               <div className="bg-muted/50 rounded-lg p-3 text-center">
                 <div className="text-xl font-bold">
-                  {summary.avg_duration_ms ? formatDuration(summary.avg_duration_ms) : "-"}
+                  {formatDur(summary.avg_duration_ms)}
                 </div>
                 <div className="text-xs text-muted-foreground">Avg Time</div>
               </div>
@@ -429,12 +420,12 @@ export function ImportLogsPanel({ jobId, jobStatus }: Props) {
                             </TableCell>
                             <TableCell>
                               <span className="text-xs text-muted-foreground">
-                                {formatBytes(log.file_size)}
+                                {formatSize(log.file_size)}
                               </span>
                             </TableCell>
                             <TableCell>
                               <span className="text-xs text-muted-foreground">
-                                {formatDuration(log.processing_duration_ms)}
+                                {formatDur(log.processing_duration_ms)}
                               </span>
                             </TableCell>
                           </TableRow>

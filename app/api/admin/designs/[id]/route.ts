@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { getUser, isAdmin } from "@/lib/auth";
 import { updateDesignSchema, formatZodError } from "@/lib/validations";
 import type { IdRouteParams } from "@/lib/types";
 import { z } from "zod";
@@ -8,7 +7,7 @@ import {
   validateRateLimit,
   validateParams,
   parseJsonBody,
-  forbiddenResponse,
+  requireAdminApi,
   notFoundResponse,
   handleDbError,
 } from "@/lib/api/helpers";
@@ -19,11 +18,9 @@ const paramsSchema = z.object({
 
 // GET - Get single design with all details (bypasses RLS for admins)
 export async function GET(request: NextRequest, { params }: IdRouteParams) {
-  const user = await getUser();
-
-  if (!user || !isAdmin(user)) {
-    return forbiddenResponse("Admin access required");
-  }
+  const adminResult = await requireAdminApi();
+  if (adminResult.response) return adminResult.response;
+  const user = adminResult.user;
 
   const rateLimit = validateRateLimit(request, user.id, "admin");
   if (!rateLimit.success) return rateLimit.response!;
@@ -71,11 +68,9 @@ export async function GET(request: NextRequest, { params }: IdRouteParams) {
 
 // PATCH - Update design metadata
 export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
-  const user = await getUser();
-
-  if (!user || !isAdmin(user)) {
-    return forbiddenResponse("Admin access required");
-  }
+  const adminResult = await requireAdminApi();
+  if (adminResult.response) return adminResult.response;
+  const user = adminResult.user;
 
   const rateLimit = validateRateLimit(request, user.id, "admin");
   if (!rateLimit.success) return rateLimit.response!;
@@ -138,11 +133,9 @@ export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
 
 // DELETE - Soft delete or hard delete design
 export async function DELETE(request: NextRequest, { params }: IdRouteParams) {
-  const user = await getUser();
-
-  if (!user || !isAdmin(user)) {
-    return forbiddenResponse("Admin access required");
-  }
+  const adminResult = await requireAdminApi();
+  if (adminResult.response) return adminResult.response;
+  const user = adminResult.user;
 
   const rateLimit = validateRateLimit(request, user.id, "admin");
   if (!rateLimit.success) return rateLimit.response!;

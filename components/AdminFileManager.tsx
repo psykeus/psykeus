@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -15,32 +15,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Eye, MoreVertical, FileIcon } from "lucide-react";
 import { Spinner } from "@/components/ui/loading-states";
 import { InlineError } from "@/components/ui/error-states";
 import type { DesignFile, FileRole } from "@/lib/types";
-import {
-  canPreview,
-  canShowThumbnail,
-  getPreviewType,
-  getFileTypeColor,
-  fetchSvgWithCorrectMime,
-  cacheThumbnail,
-  hasCachedThumbnail,
-  getCachedThumbnail,
-} from "@/lib/file-preview-utils";
+import { formatBytes } from "@/lib/utils";
+import { canPreview, getPreviewType } from "@/lib/file-preview-utils";
+import { FileItem } from "@/components/FilePreview";
 
 // Dynamically import ModelViewer to avoid SSR issues
 const ModelViewer = dynamic(() => import("@/components/ModelViewer"), {
@@ -51,124 +37,6 @@ const ModelViewer = dynamic(() => import("@/components/ModelViewer"), {
     </div>
   ),
 });
-
-/**
- * Lazy-loading thumbnail component for file previews in admin
- */
-function FileThumbnail({
-  fileId,
-  fileType,
-  designId,
-  canPreviewThumbnail,
-}: {
-  fileId: string;
-  fileType: string | null;
-  designId: string;
-  canPreviewThumbnail: boolean;
-}) {
-  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(
-    getCachedThumbnail(fileId)
-  );
-  const [isLoading, setIsLoading] = useState(
-    canPreviewThumbnail && !hasCachedThumbnail(fileId)
-  );
-  const [hasError, setHasError] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const hasStartedLoading = useRef(false);
-
-  useEffect(() => {
-    if (!canPreviewThumbnail || hasStartedLoading.current || hasCachedThumbnail(fileId)) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !hasStartedLoading.current) {
-          hasStartedLoading.current = true;
-          loadThumbnail();
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "100px" }
-    );
-
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, [fileId, canPreviewThumbnail, designId]);
-
-  const loadThumbnail = async () => {
-    try {
-      const response = await fetch(
-        `/api/admin/designs/${designId}/files/${fileId}/preview`
-      );
-      if (!response.ok) throw new Error("Failed to fetch");
-
-      const data = await response.json();
-      let url = data.url;
-
-      // For SVG files, create blob URL with correct MIME type
-      const type = fileType?.toLowerCase() || "";
-      if (type === "svg") {
-        url = await fetchSvgWithCorrectMime(data.url);
-      }
-
-      cacheThumbnail(fileId, url);
-      setThumbnailUrl(url);
-    } catch {
-      setHasError(true);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const colorClass = getFileTypeColor(fileType);
-  const typeLabel = fileType?.toUpperCase() || "FILE";
-
-  // For non-previewable files or on error, show styled file type icon
-  if (!canPreviewThumbnail || hasError) {
-    return (
-      <div
-        className={`w-10 h-10 rounded flex flex-col items-center justify-center shrink-0 ${colorClass}`}
-      >
-        <FileIcon className="w-3.5 h-3.5" />
-        <span className="text-[7px] font-bold mt-0.5 leading-none">
-          {typeLabel.slice(0, 4)}
-        </span>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      ref={containerRef}
-      className="w-10 h-10 rounded bg-muted overflow-hidden shrink-0 relative"
-    >
-      {isLoading && (
-        <div className={`absolute inset-0 animate-pulse ${colorClass}`}>
-          <div className="w-full h-full flex flex-col items-center justify-center">
-            <FileIcon className="w-3.5 h-3.5 opacity-50" />
-            <span className="text-[7px] font-bold mt-0.5 leading-none opacity-50">
-              {typeLabel.slice(0, 4)}
-            </span>
-          </div>
-        </div>
-      )}
-      {thumbnailUrl && !hasError && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={thumbnailUrl}
-          alt=""
-          className="w-full h-full object-cover"
-          loading="lazy"
-          onError={() => setHasError(true)}
-        />
-      )}
-    </div>
-  );
-}
 
 interface AdminFileManagerProps {
   designId: string;
@@ -196,7 +64,7 @@ export function AdminFileManager({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
-  const handlePreviewFile = async (file: DesignFile) => {
+  const handlePreviewFile = useCallback(async (file: DesignFile) => {
     if (!canPreview(file.file_type)) return;
 
     setPreviewFile(file);
@@ -220,13 +88,13 @@ export function AdminFileManager({
     } finally {
       setPreviewLoading(false);
     }
-  };
+  }, [designId]);
 
-  const closePreview = () => {
+  const closePreview = useCallback(() => {
     setPreviewFile(null);
     setPreviewUrl(null);
     setPreviewError(null);
-  };
+  }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -267,7 +135,7 @@ export function AdminFileManager({
 
   const [settingPrimary, setSettingPrimary] = useState<string | null>(null);
 
-  const handleSetPrimary = async (fileId: string) => {
+  const handleSetPrimary = useCallback(async (fileId: string) => {
     setSettingPrimary(fileId);
     try {
       const response = await fetch(`/api/admin/designs/${designId}/primary`, {
@@ -293,9 +161,9 @@ export function AdminFileManager({
     } finally {
       setSettingPrimary(null);
     }
-  };
+  }, [designId, onFilesChange, onPreviewChange]);
 
-  const handleDeleteFile = async (fileId: string) => {
+  const handleDeleteFile = useCallback(async (fileId: string) => {
     if (!confirm("Are you sure you want to delete this file?")) return;
 
     try {
@@ -315,9 +183,9 @@ export function AdminFileManager({
     } catch (err) {
       console.error("Delete error:", err);
     }
-  };
+  }, [designId, onFilesChange]);
 
-  const handleUpdateRole = async (fileId: string, newRole: FileRole) => {
+  const handleUpdateRole = useCallback(async (fileId: string, newRole: FileRole) => {
     try {
       const response = await fetch(
         `/api/admin/designs/${designId}/files/${fileId}`,
@@ -337,16 +205,13 @@ export function AdminFileManager({
     } catch (err) {
       console.error("Update role error:", err);
     }
-  };
+  }, [designId, onFilesChange]);
 
-  const formatBytes = (bytes: number | null): string => {
-    if (!bytes) return "Unknown";
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
+  // formatBytes imported from @/lib/utils
+  const formatBytesWithDefault = useCallback((bytes: number | null) =>
+    formatBytes(bytes, { nullValue: "Unknown" }), []);
 
-  const getRoleBadgeVariant = (role: FileRole) => {
+  const getRoleBadgeVariant = useCallback((role: FileRole) => {
     switch (role) {
       case "primary":
         return "default";
@@ -355,12 +220,13 @@ export function AdminFileManager({
       case "component":
         return "outline";
     }
-  };
+  }, []);
 
-  // Group files: primary file first, then all others
-  const primaryFile = files.find((f) => f.id === primaryFileId);
-  // Show all non-primary files as "other files" regardless of their file_role
-  const otherFiles = files.filter((f) => f.id !== primaryFileId);
+  // Memoize file groupings to prevent recalculation on every render
+  const { primaryFile, otherFiles } = useMemo(() => ({
+    primaryFile: files.find((f) => f.id === primaryFileId),
+    otherFiles: files.filter((f) => f.id !== primaryFileId),
+  }), [files, primaryFileId]);
 
   const previewType = previewFile ? getPreviewType(previewFile.file_type) : null;
 
@@ -429,7 +295,7 @@ export function AdminFileManager({
                     onSetPrimary={handleSetPrimary}
                     onDelete={handleDeleteFile}
                     onUpdateRole={handleUpdateRole}
-                    formatBytes={formatBytes}
+                    formatBytes={formatBytesWithDefault}
                     getRoleBadgeVariant={getRoleBadgeVariant}
                     canDelete={files.length > 1}
                   />
@@ -455,7 +321,7 @@ export function AdminFileManager({
                         onSetPrimary={handleSetPrimary}
                         onDelete={handleDeleteFile}
                         onUpdateRole={handleUpdateRole}
-                        formatBytes={formatBytes}
+                        formatBytes={formatBytesWithDefault}
                         getRoleBadgeVariant={getRoleBadgeVariant}
                         canDelete={files.length > 1}
                       />
@@ -552,7 +418,7 @@ export function AdminFileManager({
 
           <div className="p-4 pt-2 flex justify-between items-center border-t">
             <span className="text-sm text-muted-foreground">
-              {formatBytes(previewFile?.size_bytes || null)}
+              {formatBytesWithDefault(previewFile?.size_bytes || null)}
             </span>
             <Button variant="outline" onClick={closePreview}>
               Close
@@ -564,127 +430,3 @@ export function AdminFileManager({
   );
 }
 
-interface FileItemProps {
-  file: DesignFile;
-  designId: string;
-  isPrimary: boolean;
-  isSettingPrimary: boolean;
-  canPreviewFile: boolean;
-  onPreview: () => void;
-  onSetPrimary: (fileId: string) => void;
-  onDelete: (fileId: string) => void;
-  onUpdateRole: (fileId: string, role: FileRole) => void;
-  formatBytes: (bytes: number | null) => string;
-  getRoleBadgeVariant: (role: FileRole) => "default" | "secondary" | "outline";
-  canDelete: boolean;
-}
-
-function FileItem({
-  file,
-  designId,
-  isPrimary,
-  isSettingPrimary,
-  canPreviewFile,
-  onPreview,
-  onSetPrimary,
-  onDelete,
-  onUpdateRole,
-  formatBytes,
-  getRoleBadgeVariant,
-  canDelete,
-}: FileItemProps) {
-  return (
-    <div
-      className={`flex items-center justify-between p-3 border rounded-lg bg-card transition-colors ${
-        isSettingPrimary ? "opacity-70" : ""
-      } ${canPreviewFile ? "hover:bg-accent/50" : "hover:bg-accent/30"}`}
-    >
-      <div className="flex items-center gap-3 min-w-0">
-        <FileThumbnail
-          fileId={file.id}
-          fileType={file.file_type}
-          designId={designId}
-          canPreviewThumbnail={canShowThumbnail(file.file_type)}
-        />
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-medium text-sm truncate">
-              {file.display_name || file.original_filename || "Unnamed file"}
-            </p>
-            <Badge variant="outline" className="uppercase text-xs shrink-0 hidden sm:inline-flex">
-              {file.file_type || "?"}
-            </Badge>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {formatBytes(file.size_bytes)}
-            {file.file_description && ` - ${file.file_description}`}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 shrink-0">
-        {isSettingPrimary ? (
-          <Badge variant="secondary" className="animate-pulse">
-            Updating...
-          </Badge>
-        ) : (
-          <Badge variant={getRoleBadgeVariant(file.file_role)}>
-            {file.file_role}
-          </Badge>
-        )}
-
-        {/* Preview button */}
-        {canPreviewFile && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onPreview}
-            disabled={isSettingPrimary}
-            title="Preview file"
-          >
-            <Eye className="h-4 w-4" />
-          </Button>
-        )}
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" disabled={isSettingPrimary}>
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {canPreviewFile && (
-              <DropdownMenuItem onClick={onPreview}>
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </DropdownMenuItem>
-            )}
-            {!isPrimary && (
-              <DropdownMenuItem onClick={() => onSetPrimary(file.id)}>
-                Set as Primary (regenerates preview)
-              </DropdownMenuItem>
-            )}
-            {file.file_role !== "variant" && !isPrimary && (
-              <DropdownMenuItem onClick={() => onUpdateRole(file.id, "variant")}>
-                Change to Variant
-              </DropdownMenuItem>
-            )}
-            {file.file_role !== "component" && !isPrimary && (
-              <DropdownMenuItem onClick={() => onUpdateRole(file.id, "component")}>
-                Change to Component
-              </DropdownMenuItem>
-            )}
-            {canDelete && (
-              <DropdownMenuItem
-                onClick={() => onDelete(file.id)}
-                className="text-destructive focus:text-destructive"
-              >
-                Delete File
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
-  );
-}

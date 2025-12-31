@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { Bell, Check, CheckCheck, Trash2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -90,7 +90,7 @@ export function NotificationCenter({
   }, [userId]);
 
   // Mark single notification as read
-  const markAsRead = async (notificationId: string) => {
+  const markAsRead = useCallback(async (notificationId: string) => {
     try {
       const res = await fetch(`/api/notifications/${notificationId}`, {
         method: "PATCH",
@@ -106,10 +106,10 @@ export function NotificationCenter({
     } catch (error) {
       console.error("Failed to mark as read:", error);
     }
-  };
+  }, []);
 
   // Mark all as read
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     try {
       const res = await fetch("/api/notifications/read-all", { method: "POST" });
       if (res.ok) {
@@ -119,25 +119,27 @@ export function NotificationCenter({
     } catch (error) {
       console.error("Failed to mark all as read:", error);
     }
-  };
+  }, []);
 
   // Delete notification
-  const deleteNotification = async (notificationId: string) => {
+  const deleteNotification = useCallback(async (notificationId: string) => {
     try {
       const res = await fetch(`/api/notifications/${notificationId}`, {
         method: "DELETE",
       });
       if (res.ok) {
-        const notification = notifications.find((n) => n.id === notificationId);
-        setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
-        if (notification && !notification.isRead) {
-          setUnreadCount((prev) => Math.max(0, prev - 1));
-        }
+        setNotifications((prev) => {
+          const notification = prev.find((n) => n.id === notificationId);
+          if (notification && !notification.isRead) {
+            setUnreadCount((count) => Math.max(0, count - 1));
+          }
+          return prev.filter((n) => n.id !== notificationId);
+        });
       }
     } catch (error) {
       console.error("Failed to delete notification:", error);
     }
-  };
+  }, []);
 
   // Handle dropdown open/close
   const handleOpenChange = (open: boolean) => {
@@ -222,8 +224,8 @@ export function NotificationCenter({
   );
 }
 
-// Single notification item
-function NotificationItem({
+// Single notification item - memoized to prevent unnecessary re-renders
+const NotificationItem = memo(function NotificationItem({
   notification,
   onMarkAsRead,
   onDelete,
@@ -239,17 +241,23 @@ function NotificationItem({
     urgent: "border-l-2 border-l-red-500",
   };
 
+  const priorityLabel = notification.priority !== "normal" ? ` (${notification.priority} priority)` : "";
+
   return (
-    <div
+    <article
       className={cn(
-        "group relative px-4 py-3 hover:bg-muted/50 transition-colors",
+        "group relative px-4 py-3 hover:bg-muted/50 transition-colors focus-within:bg-muted/50",
         !notification.isRead && "bg-muted/30",
         priorityColors[notification.priority]
       )}
+      aria-label={`${notification.isRead ? "" : "Unread: "}${notification.title}${priorityLabel}`}
     >
       {/* Unread indicator */}
       {!notification.isRead && (
-        <div className="absolute left-2 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-primary" />
+        <div
+          className="absolute left-2 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-primary"
+          aria-hidden="true"
+        />
       )}
 
       <div className="pl-2">
@@ -258,10 +266,13 @@ function NotificationItem({
           {notification.message}
         </p>
         <div className="flex items-center justify-between mt-2">
-          <span className="text-[10px] text-muted-foreground">
+          <time
+            className="text-[10px] text-muted-foreground"
+            dateTime={notification.createdAt}
+          >
             {formatRelativeTime(notification.createdAt)}
-          </span>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          </time>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
             {notification.actionUrl && (
               <Button
                 variant="ghost"
@@ -269,8 +280,11 @@ function NotificationItem({
                 className="h-6 w-6"
                 asChild
               >
-                <a href={notification.actionUrl}>
-                  <ExternalLink className="h-3 w-3" />
+                <a
+                  href={notification.actionUrl}
+                  aria-label={`Open ${notification.actionLabel || "link"}`}
+                >
+                  <ExternalLink className="h-3 w-3" aria-hidden="true" />
                 </a>
               </Button>
             )}
@@ -280,8 +294,9 @@ function NotificationItem({
                 size="icon"
                 className="h-6 w-6"
                 onClick={() => onMarkAsRead(notification.id)}
+                aria-label={`Mark "${notification.title}" as read`}
               >
-                <Check className="h-3 w-3" />
+                <Check className="h-3 w-3" aria-hidden="true" />
               </Button>
             )}
             <Button
@@ -289,15 +304,16 @@ function NotificationItem({
               size="icon"
               className="h-6 w-6 text-muted-foreground hover:text-destructive"
               onClick={() => onDelete(notification.id)}
+              aria-label={`Delete notification: ${notification.title}`}
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-3 w-3" aria-hidden="true" />
             </Button>
           </div>
         </div>
       </div>
-    </div>
+    </article>
   );
-}
+});
 
 // Helper function to map DB row to Notification
 function mapDbToNotification(row: Record<string, unknown>): Notification {

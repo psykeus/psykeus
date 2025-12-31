@@ -7,7 +7,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { checkRateLimit, getClientIdentifier, RATE_LIMITS } from "@/lib/rate-limit";
+import { getUser, isAdmin, isSuperAdmin } from "@/lib/auth";
+import { anonymizeIp } from "@/lib/utils";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { User } from "@/lib/auth";
 
 // =============================================================================
 // Rate Limiting
@@ -128,9 +131,13 @@ export function parsePaginationParams(
   const defaultPageSize = options?.defaultPageSize ?? 20;
   const maxPageSize = options?.maxPageSize ?? 100;
 
-  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
+  const parsedPage = parseInt(searchParams.get("page") ?? "1", 10);
+  const parsedPageSize = parseInt(searchParams.get("pageSize") ?? String(defaultPageSize), 10);
+
+  // Handle NaN from invalid numeric strings
+  const page = Math.max(1, Number.isNaN(parsedPage) ? 1 : parsedPage);
   const pageSize = Math.min(
-    Math.max(1, parseInt(searchParams.get("pageSize") ?? String(defaultPageSize), 10)),
+    Math.max(1, Number.isNaN(parsedPageSize) ? defaultPageSize : parsedPageSize),
     maxPageSize
   );
 
@@ -253,4 +260,89 @@ export function featureDisabledResponse(
     { error: `${featureName} feature is disabled` },
     { status: 403, headers }
   );
+}
+
+// =============================================================================
+// IP Address Handling
+// =============================================================================
+
+/**
+ * Extract and anonymize client IP address from request.
+ *
+ * Handles X-Forwarded-For header for proxied requests and anonymizes
+ * the IP for GDPR compliance.
+ *
+ * @param request - The incoming request
+ * @returns Anonymized IP address or null if not available
+ *
+ * @example
+ * const ip = getAnonymizedIp(request);
+ * // "192.168.1.0" (IPv4) or "2001:db8:85a3::" (IPv6)
+ */
+export function getAnonymizedIp(request: NextRequest): string | null {
+  const forwarded = request.headers.get("x-forwarded-for");
+  const fullIp = forwarded ? forwarded.split(",")[0].trim() : null;
+  return fullIp ? anonymizeIp(fullIp) : null;
+}
+
+// =============================================================================
+// Admin Authentication for API Routes
+// =============================================================================
+
+export type RequireAdminResult =
+  | { user: User; response?: never }
+  | { user?: never; response: NextResponse };
+
+/**
+ * Require admin authentication for API routes.
+ *
+ * Unlike requireAdmin() from lib/auth which throws a redirect,
+ * this returns a response suitable for API routes.
+ *
+ * @param headers - Optional headers to include in error responses
+ * @returns User if authenticated as admin, or error response
+ *
+ * @example
+ * const result = await requireAdminApi();
+ * if (result.response) return result.response;
+ * const user = result.user;
+ */
+export async function requireAdminApi(
+  headers?: Record<string, string>
+): Promise<RequireAdminResult> {
+  const user = await getUser();
+
+  if (!user) {
+    return { response: unauthorizedResponse(headers) };
+  }
+
+  if (!isAdmin(user)) {
+    return { response: forbiddenResponse("Admin access required", headers) };
+  }
+
+  return { user };
+}
+
+export type RequireSuperAdminResult = RequireAdminResult;
+
+/**
+ * Require super admin authentication for API routes.
+ *
+ * @param headers - Optional headers to include in error responses
+ * @returns User if authenticated as super admin, or error response
+ */
+export async function requireSuperAdminApi(
+  headers?: Record<string, string>
+): Promise<RequireSuperAdminResult> {
+  const user = await getUser();
+
+  if (!user) {
+    return { response: unauthorizedResponse(headers) };
+  }
+
+  if (!isSuperAdmin(user)) {
+    return { response: forbiddenResponse("Super admin access required", headers) };
+  }
+
+  return { user };
 }

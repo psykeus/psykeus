@@ -6,7 +6,6 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getUser, isAdmin } from "@/lib/auth";
 import { isWebhooksEnabled } from "@/lib/feature-flags";
 import {
   listWebhooks,
@@ -15,7 +14,7 @@ import {
   WEBHOOK_EVENTS,
 } from "@/lib/webhooks";
 import { z } from "zod";
-import { forbiddenResponse } from "@/lib/api/helpers";
+import { requireAdminApi } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -34,10 +33,8 @@ const createWebhookSchema = z.object({
  * List all webhooks and stats
  */
 export async function GET() {
-  const user = await getUser();
-  if (!user || !isAdmin(user)) {
-    return forbiddenResponse("Admin access required");
-  }
+  const adminResult = await requireAdminApi();
+  if (adminResult.response) return adminResult.response;
 
   const enabled = await isWebhooksEnabled();
   if (!enabled) {
@@ -65,10 +62,9 @@ export async function GET() {
  * Create a new webhook
  */
 export async function POST(request: NextRequest) {
-  const user = await getUser();
-  if (!user || !isAdmin(user)) {
-    return forbiddenResponse("Admin access required");
-  }
+  const adminResult = await requireAdminApi();
+  if (adminResult.response) return adminResult.response;
+  const user = adminResult.user;
 
   const enabled = await isWebhooksEnabled();
   if (!enabled) {

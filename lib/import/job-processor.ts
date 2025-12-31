@@ -1143,6 +1143,331 @@ async function processItem(
 
 // loadExistingHashes and loadExistingPhashes are now imported from ./hash-loader
 
+// ========================================
+// Extracted Helper Functions
+// ========================================
+
+interface ReadAndHashResult {
+  buffer: Buffer;
+  contentHash: string;
+}
+
+/**
+ * Read file from disk and compute SHA-256 hash
+ */
+async function readAndHashFile(sourcePath: string): Promise<ReadAndHashResult> {
+  const buffer = await fs.readFile(sourcePath);
+  const contentHash = crypto.createHash("sha256").update(buffer).digest("hex");
+  return { buffer, contentHash };
+}
+
+interface DuplicateCheckResult {
+  isDuplicate: boolean;
+  duplicateOf?: string;
+  similarity?: number;
+  duplicateType?: "exact" | "near";
+  duplicateTitle?: string;
+}
+
+/**
+ * Check for exact duplicate by content hash
+ */
+function checkExactDuplicate(
+  contentHash: string,
+  existingHashes: Map<string, string>,
+  detectDuplicates: boolean
+): DuplicateCheckResult {
+  if (!detectDuplicates) {
+    return { isDuplicate: false };
+  }
+  const existingDesignId = existingHashes.get(contentHash);
+  if (existingDesignId) {
+    return {
+      isDuplicate: true,
+      duplicateOf: existingDesignId,
+      similarity: 100,
+      duplicateType: "exact",
+    };
+  }
+  return { isDuplicate: false };
+}
+
+/**
+ * Check for near-duplicate by perceptual hash
+ */
+function checkNearDuplicate(
+  previewPhash: string,
+  existingPhashes: Map<string, { design_id: string; title: string }>,
+  options: { detect_duplicates: boolean; exact_duplicates_only?: boolean; near_duplicate_threshold?: number }
+): DuplicateCheckResult {
+  if (!options.detect_duplicates || options.exact_duplicates_only || !previewPhash) {
+    return { isDuplicate: false };
+  }
+
+  const hashList = Array.from(existingPhashes.entries()).map(([hash, info]) => ({
+    id: info.design_id,
+    hash,
+  }));
+
+  // Convert percentage threshold to Hamming distance (64 bits total)
+  const threshold = options.near_duplicate_threshold ?? 85;
+  const maxHammingDistance = Math.floor((100 - threshold) * 64 / 100);
+
+  const similar = findSimilarHashes(previewPhash, hashList, maxHammingDistance);
+
+  if (similar.length > 0) {
+    const match = similar[0];
+    const duplicateTitle = existingPhashes.get(match.hash)?.title || "Unknown";
+    return {
+      isDuplicate: true,
+      duplicateOf: match.id,
+      similarity: match.similarity,
+      duplicateType: "near",
+      duplicateTitle,
+    };
+  }
+
+  return { isDuplicate: false };
+}
+
+interface DesignCreationData {
+  slug: string;
+  title: string;
+  description: string;
+  isPublic: boolean;
+  projectType: string | null;
+  difficulty: string | null;
+  categories: string[];
+  style: string | null;
+  approxDimensions: string | null;
+  jobId: string;
+  sourcePath: string;
+}
+
+interface DesignRecord {
+  id: string;
+  slug: string;
+  title: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Create design record with unique slug and retry on conflict
+ */
+async function createDesignWithRetry(
+  supabase: ReturnType<typeof createServiceClient>,
+  data: DesignCreationData,
+  contentHash: string
+): Promise<{ design: DesignRecord | null; error: string | null }> {
+  const baseSlug = generateSlug(data.title);
+  const uniqueSuffix = contentHash.slice(0, 8);
+  let slug = `${baseSlug}-${uniqueSuffix}`;
+
+  // Check if slug exists and add timestamp if needed
+  const { data: existingSlug } = await supabase
+    .from("designs")
+    .select("slug")
+    .eq("slug", slug)
+    .single();
+
+  if (existingSlug) {
+    slug = `${baseSlug}-${uniqueSuffix}-${Date.now().toString(36)}`;
+  }
+
+  // Try to insert with retry on duplicate key
+  const maxRetries = 3;
+  for (let retries = 0; retries < maxRetries; retries++) {
+    const result = await supabase
+      .from("designs")
+      .insert({
+        slug,
+        title: data.title,
+        description: data.description,
+        preview_path: "",
+        is_public: data.isPublic,
+        project_type: data.projectType,
+        difficulty: data.difficulty,
+        categories: data.categories,
+        style: data.style,
+        approx_dimensions: data.approxDimensions,
+        import_job_id: data.jobId,
+        import_source_path: data.sourcePath,
+      })
+      .select()
+      .single();
+
+    if (result.error?.code === "23505") {
+      // Duplicate key - generate new unique slug
+      slug = `${baseSlug}-${uniqueSuffix}-${Date.now().toString(36)}-${retries + 1}`;
+      continue;
+    }
+
+    if (result.error) {
+      return { design: null, error: result.error.message };
+    }
+
+    return { design: result.data as DesignRecord, error: null };
+  }
+
+  return { design: null, error: "Failed to create design after retries" };
+}
+
+/**
+ * Upload file to Supabase storage
+ */
+async function uploadFileToStorage(
+  supabase: ReturnType<typeof createServiceClient>,
+  buffer: Buffer,
+  storagePath: string,
+  contentType: string
+): Promise<{ success: boolean; error?: string }> {
+  const { error } = await supabase.storage
+    .from("designs")
+    .upload(storagePath, buffer, {
+      contentType,
+      upsert: true,
+    });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+  return { success: true };
+}
+
+/**
+ * Upload preview image to storage
+ */
+async function uploadPreviewToStorage(
+  supabase: ReturnType<typeof createServiceClient>,
+  previewBuffer: Buffer,
+  slug: string,
+  contentHash: string
+): Promise<string> {
+  const timestamp = Date.now().toString(36);
+  const previewFilename = `${slug}-${contentHash.slice(0, 8)}-${timestamp}.png`;
+
+  const { error } = await supabase.storage
+    .from("previews")
+    .upload(previewFilename, previewBuffer, {
+      contentType: "image/png",
+      upsert: true,
+    });
+
+  if (error) {
+    return "";
+  }
+
+  const { data: publicUrl } = supabase.storage
+    .from("previews")
+    .getPublicUrl(previewFilename);
+
+  return publicUrl.publicUrl;
+}
+
+interface DesignFileCreationData {
+  designId: string;
+  storagePath: string;
+  fileType: string;
+  sizeBytes: number;
+  contentHash: string;
+  previewPhash: string | null;
+  projectRole: string | null;
+  originalFilename: string;
+  displayName: string;
+}
+
+/**
+ * Create design_files record
+ */
+async function createDesignFileRecord(
+  supabase: ReturnType<typeof createServiceClient>,
+  data: DesignFileCreationData
+): Promise<{ designFile: { id: string } | null; error: string | null }> {
+  const { data: designFile, error } = await supabase
+    .from("design_files")
+    .insert({
+      design_id: data.designId,
+      storage_path: data.storagePath,
+      file_type: data.fileType,
+      size_bytes: data.sizeBytes,
+      content_hash: data.contentHash,
+      preview_phash: data.previewPhash,
+      version_number: 1,
+      is_active: true,
+      file_role: data.projectRole || "primary",
+      original_filename: data.originalFilename,
+      display_name: data.displayName,
+      sort_order: 0,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    return { designFile: null, error: error.message };
+  }
+
+  return { designFile, error: null };
+}
+
+/**
+ * Attach tags to a design (batch operation to avoid N+1)
+ */
+async function attachTagsToDesign(
+  supabase: ReturnType<typeof createServiceClient>,
+  designId: string,
+  tags: string[]
+): Promise<void> {
+  if (tags.length === 0) return;
+
+  // Normalize tags
+  const normalizedTags = tags
+    .map((t) => t.toLowerCase().trim())
+    .filter((t) => t.length > 0);
+
+  if (normalizedTags.length === 0) return;
+
+  // Get existing tags in one query
+  const { data: existingTags } = await supabase
+    .from("tags")
+    .select("id, name")
+    .in("name", normalizedTags);
+
+  const existingTagMap = new Map(
+    (existingTags || []).map((t) => [t.name, t.id])
+  );
+
+  // Find tags that need to be created
+  const tagsToCreate = normalizedTags.filter((t) => !existingTagMap.has(t));
+
+  // Create new tags if needed
+  if (tagsToCreate.length > 0) {
+    const { data: newTags } = await supabase
+      .from("tags")
+      .insert(tagsToCreate.map((name) => ({ name })))
+      .select("id, name");
+
+    for (const tag of newTags || []) {
+      existingTagMap.set(tag.name, tag.id);
+    }
+  }
+
+  // Create design_tags associations
+  const designTags = normalizedTags
+    .filter((t) => existingTagMap.has(t))
+    .map((t) => ({
+      design_id: designId,
+      tag_id: existingTagMap.get(t)!,
+    }));
+
+  if (designTags.length > 0) {
+    await supabase.from("design_tags").insert(designTags);
+  }
+}
+
+// ========================================
+// End Extracted Helper Functions
+// ========================================
+
 // Convert imported extension arrays (with dots) to lowercase without dots for comparison
 // DESIGN_EXTENSIONS and IMAGE_EXTENSIONS are imported from @/lib/file-types
 const DESIGN_FILE_EXTENSIONS_SET = new Set(

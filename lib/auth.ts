@@ -2,6 +2,9 @@ import { createClient } from "@/lib/supabase/server";
 import { User, UserRole } from "@/lib/types";
 import { redirect } from "next/navigation";
 
+// Re-export User type for use by other modules
+export type { User } from "@/lib/types";
+
 export async function getUser(): Promise<User | null> {
   const supabase = await createClient();
 

@@ -19,16 +19,34 @@ export function slugify(text: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
-export function formatBytes(bytes: number, decimals = 2): string {
-  if (bytes === 0) return "0 Bytes";
+/**
+ * Format bytes to human-readable string.
+ *
+ * @param bytes - The number of bytes to format
+ * @param options - Formatting options
+ * @param options.decimals - Number of decimal places (default: 1)
+ * @param options.nullValue - Value to return for null/undefined/0 (default: "0 B")
+ * @returns Formatted string like "1.5 MB"
+ *
+ * @example
+ * formatBytes(1536) // "1.5 KB"
+ * formatBytes(null, { nullValue: "Unknown" }) // "Unknown"
+ * formatBytes(0) // "0 B"
+ */
+export function formatBytes(
+  bytes: number | null | undefined,
+  options?: { decimals?: number; nullValue?: string }
+): string {
+  const { decimals = 1, nullValue = "0 B" } = options ?? {};
 
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
+  if (bytes === null || bytes === undefined || bytes === 0) {
+    return nullValue;
+  }
 
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(decimals)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(decimals)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(decimals)} GB`;
 }
 
 export function formatDate(date: string | Date): string {
@@ -47,6 +65,45 @@ export function formatDateTime(date: string | Date): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(date));
+}
+
+/**
+ * Format duration in milliseconds to human-readable string.
+ *
+ * @param ms - Duration in milliseconds
+ * @param nullValue - Value to return for null/undefined (default: "-")
+ * @returns Formatted string like "1.5s" or "2.3m"
+ *
+ * @example
+ * formatDuration(1500) // "1.5s"
+ * formatDuration(90000) // "1.5m"
+ * formatDuration(500) // "500ms"
+ */
+export function formatDuration(ms: number | null | undefined, nullValue = "-"): string {
+  if (ms === null || ms === undefined) return nullValue;
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${(ms / 60000).toFixed(1)}m`;
+}
+
+/**
+ * Format price from cents to display string.
+ *
+ * @param cents - Amount in cents (e.g., 1999 for $19.99)
+ * @param currency - Currency code (default: "usd")
+ * @returns Formatted price string like "$19.99"
+ *
+ * @example
+ * formatPrice(1999) // "$19.99"
+ * formatPrice(1999, "eur") // "€19.99"
+ */
+export function formatPrice(cents: number | null | undefined, currency = "usd"): string {
+  if (cents === null || cents === undefined) return "-";
+
+  const amount = cents / 100;
+  const currencySymbol = currency.toLowerCase() === "eur" ? "€" : "$";
+
+  return `${currencySymbol}${amount.toFixed(2)}`;
 }
 
 // Re-export from file-types for backwards compatibility

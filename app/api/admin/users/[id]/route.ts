@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin, isSuperAdmin } from "@/lib/auth";
+import { isSuperAdmin } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/server";
 import {
   getUserWithTier,
@@ -31,11 +31,14 @@ import {
   notFoundResponse,
   forbiddenResponse,
   handleDbError,
+  requireAdminApi,
 } from "@/lib/api/helpers";
 
 export async function GET(request: NextRequest, { params }: IdRouteParams) {
+  const adminResult = await requireAdminApi();
+  if (adminResult.response) return adminResult.response;
+
   try {
-    await requireAdmin();
     const { id } = await params;
 
     const user = await getUserWithTier(id);
@@ -82,8 +85,11 @@ export async function GET(request: NextRequest, { params }: IdRouteParams) {
 }
 
 export async function PATCH(request: NextRequest, { params }: IdRouteParams) {
+  const adminResult = await requireAdminApi();
+  if (adminResult.response) return adminResult.response;
+  const admin = adminResult.user;
+
   try {
-    const admin = await requireAdmin();
     const { id } = await params;
 
     const bodyResult = await parseJsonBody<Record<string, unknown>>(request);

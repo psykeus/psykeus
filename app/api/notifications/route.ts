@@ -5,15 +5,21 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireUser, getUser } from "@/lib/auth";
 import { listNotifications } from "@/lib/notifications";
 import {
   parsePaginationParams,
   handleDbError,
+  validateRateLimit,
 } from "@/lib/api/helpers";
 import type { NotificationType } from "@/lib/notifications/types";
 
 export async function GET(request: NextRequest) {
+  // Rate limiting
+  const currentUser = await getUser();
+  const rateLimit = validateRateLimit(request, currentUser?.id, "browse");
+  if (!rateLimit.success) return rateLimit.response!;
+
   try {
     const user = await requireUser();
 

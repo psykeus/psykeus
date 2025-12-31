@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireUser, getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { validateRateLimit } from "@/lib/api/helpers";
 
 // Schema for profile update
 interface ProfileUpdate {
@@ -10,6 +11,11 @@ interface ProfileUpdate {
 }
 
 export async function PATCH(request: NextRequest) {
+  // Rate limiting
+  const currentUser = await getUser();
+  const rateLimit = validateRateLimit(request, currentUser?.id, "browse");
+  if (!rateLimit.success) return rateLimit.response!;
+
   try {
     const user = await requireUser();
     const supabase = await createClient();

@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { validateUploadedFile } from "@/lib/file-validation";
+import { getFileExtension } from "@/lib/file-types";
 
 export const runtime = "nodejs";
 
 // Max file size: 5MB
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
-// Allowed MIME types
+// Allowed extensions for profile photos
+const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".gif"] as const;
+
+// Allowed MIME types (for initial check)
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
 export async function POST(request: NextRequest) {
@@ -22,7 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Validate file type
+    // Initial MIME type check (can be spoofed, but catches obvious errors)
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
         { error: "Invalid file type. Please upload a JPEG, PNG, WebP, or GIF image." },
@@ -38,14 +43,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique filename
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const filename = `${user.id}/profile.${ext}`;
-    const storagePath = `profile-photos/${filename}`;
-
-    // Convert File to Buffer
+    // Convert File to Buffer for content validation
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+
+    // Validate file content using magic bytes (prevents extension spoofing)
+    const validation = validateUploadedFile(buffer, file.name, ALLOWED_EXTENSIONS);
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.error || "Invalid file content" },
+        { status: 400 }
+      );
+    }
+
+    // Generate unique filename using validated extension
+    const ext = getFileExtension(file.name) || "jpg";
+    const filename = `${user.id}/profile.${ext}`;
+    const storagePath = `profile-photos/${filename}`;
 
     // Upload to Supabase Storage
     const { error: uploadError } = await supabase.storage

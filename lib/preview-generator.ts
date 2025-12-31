@@ -1,3 +1,19 @@
+/**
+ * Preview Generator
+ *
+ * Generates preview images for various design file formats.
+ * Uses server-side rendering (no GPU/WebGL) to create thumbnails
+ * and preview images for the design library.
+ *
+ * Supported formats:
+ * - 2D Vector: SVG, DXF, AI, EPS, PDF
+ * - 3D Models: STL, OBJ, GLTF, GLB, 3MF
+ * - Raster Images: PNG, JPG, WEBP
+ * - CAD: DWG (limited support)
+ *
+ * @module lib/preview-generator
+ */
+
 import sharp from "sharp";
 import {
   parseStlBuffer,
@@ -12,6 +28,10 @@ import {
 } from "./parsers";
 import { generatePhash } from "./phash";
 
+// =============================================================================
+// Types
+// =============================================================================
+
 export interface PreviewResult {
   success: boolean;
   buffer?: Buffer;
@@ -19,17 +39,37 @@ export interface PreviewResult {
   error?: string;
 }
 
-// Preview size - 1200px provides good quality on high-DPI displays
+// =============================================================================
+// Constants
+// =============================================================================
+
+/**
+ * Maximum preview image dimension (width or height).
+ * 1200px provides good quality on high-DPI displays while keeping file size reasonable.
+ */
 const PREVIEW_MAX_SIZE = 1200;
 
-// Default timeout for preview generation (30 seconds)
+/**
+ * Default timeout for preview generation in milliseconds.
+ * Prevents runaway processes for very complex files.
+ */
 const DEFAULT_TIMEOUT_MS = 30000;
 
-// Triangle limits for 3D preview generation to prevent memory overflow
-// Models with more triangles than MAX will skip preview entirely
-// Models between TARGET and MAX will be subsampled to TARGET
-const MAX_TRIANGLES_FOR_PREVIEW = 500000;  // 500K triangles max
-const TARGET_TRIANGLES_FOR_PREVIEW = 100000; // Subsample to 100K if over this
+/**
+ * Maximum triangles allowed for 3D preview generation.
+ * Models exceeding this limit will skip preview entirely to prevent memory overflow.
+ */
+const MAX_TRIANGLES_FOR_PREVIEW = 500000;
+
+/**
+ * Target triangle count for subsampling.
+ * Models between TARGET and MAX will be subsampled to this count.
+ */
+const TARGET_TRIANGLES_FOR_PREVIEW = 100000;
+
+// =============================================================================
+// Timeout Utilities
+// =============================================================================
 
 /**
  * Creates a promise that rejects after the specified timeout

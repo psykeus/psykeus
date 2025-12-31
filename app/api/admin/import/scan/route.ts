@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUser, isAdmin } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/server";
 import { isSupportedExtension, getFileExtension } from "@/lib/file-types";
 import { detectProjects } from "@/lib/import/project-detector";
@@ -8,7 +7,7 @@ import fs from "fs/promises";
 import { createReadStream } from "fs";
 import path from "path";
 import type { ScannedFile, ScanResult, ScanError } from "@/lib/types/import";
-import { forbiddenResponse, parseJsonBody, handleDbError } from "@/lib/api/helpers";
+import { requireAdminApi, parseJsonBody, handleDbError } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -17,10 +16,8 @@ export const runtime = "nodejs";
  * Scan a directory and detect projects
  */
 export async function POST(request: NextRequest) {
-  const user = await getUser();
-  if (!user || !isAdmin(user)) {
-    return forbiddenResponse("Admin access required");
-  }
+  const adminResult = await requireAdminApi();
+  if (adminResult.response) return adminResult.response;
 
   try {
     const bodyResult = await parseJsonBody<{ source_path?: string; compute_hashes?: boolean }>(request);
@@ -107,6 +104,11 @@ async function scanDirectory(
 
     for (const entry of entries) {
       const fullPath = path.join(dirPath, entry.name);
+
+      // Skip symlinks to prevent path traversal attacks
+      if (entry.isSymbolicLink()) {
+        continue;
+      }
 
       if (entry.isDirectory()) {
         // Skip hidden directories and common non-design folders

@@ -6,32 +6,38 @@
  */
 
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { createCheckoutSession } from "@/lib/services/stripe-service";
 
 export const runtime = "nodejs";
+
+// Validation schema for checkout request
+const checkoutSchema = z.object({
+  tier_id: z.string().uuid("Invalid tier ID"),
+  price_type: z.enum(["yearly", "lifetime"], {
+    message: "price_type must be 'yearly' or 'lifetime'",
+  }),
+  success_url: z.string().url("Invalid success URL").optional(),
+  cancel_url: z.string().url("Invalid cancel URL").optional(),
+  promo_code: z.string().max(50).optional(),
+});
 
 export async function POST(request: Request) {
   try {
     const user = await requireUser();
 
     const body = await request.json();
-    const { tier_id, price_type, success_url, cancel_url, promo_code } = body;
+    const validation = checkoutSchema.safeParse(body);
 
-    if (!tier_id || !price_type) {
+    if (!validation.success) {
       return NextResponse.json(
-        { error: "Missing tier_id or price_type" },
+        { error: validation.error.issues.map(i => i.message).join(", ") },
         { status: 400 }
       );
     }
 
-    if (!["yearly", "lifetime"].includes(price_type)) {
-      return NextResponse.json(
-        { error: "price_type must be 'yearly' or 'lifetime'" },
-        { status: 400 }
-      );
-    }
-
+    const { tier_id, price_type, success_url, cancel_url, promo_code } = validation.data;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
     const session = await createCheckoutSession({

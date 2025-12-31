@@ -1,10 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { getUserWithTier } from "@/lib/services/user-service";
-import { unauthorizedResponse, notFoundResponse } from "@/lib/api/helpers";
+import { unauthorizedResponse, notFoundResponse, validateRateLimit } from "@/lib/api/helpers";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const user = await getUser();
+
+  // Rate limiting - use user ID if authenticated, otherwise use IP
+  const rateLimit = validateRateLimit(request, user?.id, "browse");
+  if (!rateLimit.success) return rateLimit.response!;
 
   if (!user) {
     return unauthorizedResponse();

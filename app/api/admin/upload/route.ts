@@ -319,10 +319,12 @@ export async function POST(request: NextRequest) {
           .single();
 
         if (designError || !design) {
+          // Log the actual error for debugging, but return generic message to client
+          console.error("[Upload] Design creation failed:", designError);
           results.push({
             success: false,
             filename: file.name,
-            error: `Failed to create design: ${designError?.message}`,
+            error: "Failed to create design. Please try again.",
           });
           continue;
         }

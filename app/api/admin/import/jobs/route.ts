@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUser, isAdmin } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/server";
 import * as jobService from "@/lib/services/import-job-service";
 import * as itemService from "@/lib/services/import-item-service";
 import { selectPrimaryFile, determineFileRole } from "@/lib/import/project-detector";
 import type { CreateImportJobRequest, ScannedFile, DetectedProjectPreview, ProjectRole } from "@/lib/types/import";
-import { forbiddenResponse, parseJsonBody, handleDbError } from "@/lib/api/helpers";
+import { requireAdminApi, parseJsonBody, handleDbError } from "@/lib/api/helpers";
 
 export const runtime = "nodejs";
 
@@ -14,10 +13,8 @@ export const runtime = "nodejs";
  * List all import jobs
  */
 export async function GET(request: NextRequest) {
-  const user = await getUser();
-  if (!user || !isAdmin(user)) {
-    return forbiddenResponse("Admin access required");
-  }
+  const adminResult = await requireAdminApi();
+  if (adminResult.response) return adminResult.response;
 
   try {
     const { searchParams } = new URL(request.url);
@@ -48,10 +45,9 @@ export async function GET(request: NextRequest) {
  * Create a new import job
  */
 export async function POST(request: NextRequest) {
-  const user = await getUser();
-  if (!user || !isAdmin(user)) {
-    return forbiddenResponse("Admin access required");
-  }
+  const adminResult = await requireAdminApi();
+  if (adminResult.response) return adminResult.response;
+  const user = adminResult.user;
 
   try {
     const bodyResult = await parseJsonBody<CreateImportJobRequest & {

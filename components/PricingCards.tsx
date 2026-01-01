@@ -3,21 +3,21 @@
 /**
  * PricingCards Component
  *
- * Displays pricing tiers with yearly/lifetime toggle and checkout buttons.
+ * Displays pricing tiers with monthly/yearly/lifetime selector and checkout buttons.
  * Uses live Stripe pricing as the source of truth.
  * Supports promo codes during checkout.
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Check, Crown, Sparkles, Star, Tag } from "lucide-react";
 import { Spinner } from "@/components/ui/loading-states";
 import type { AccessTierForPricing, TierFeature } from "@/lib/types";
+
+type BillingPeriod = "monthly" | "yearly" | "lifetime";
 
 interface PricingCardsProps {
   tiers: AccessTierForPricing[];
@@ -26,7 +26,7 @@ interface PricingCardsProps {
 }
 
 export function PricingCards({ tiers, currentTierId, isLoggedIn }: PricingCardsProps) {
-  const [isLifetime, setIsLifetime] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("yearly");
   const [loadingTierId, setLoadingTierId] = useState<string | null>(null);
   const [promoCode, setPromoCode] = useState("");
   const [promoError, setPromoError] = useState<string | null>(null);
@@ -37,18 +37,36 @@ export function PricingCards({ tiers, currentTierId, isLoggedIn }: PricingCardsP
 
   // Determine available pricing options across all tiers
   const pricingOptions = useMemo(() => {
+    const hasMonthly = paidTiers.some((t) => t.stripe_monthly_price);
     const hasYearly = paidTiers.some((t) => t.stripe_yearly_price);
     const hasLifetime = paidTiers.some((t) => t.stripe_lifetime_price);
-    return { hasYearly, hasLifetime };
+    return { hasMonthly, hasYearly, hasLifetime };
   }, [paidTiers]);
 
-  // If we're showing lifetime but no tiers have it, switch to yearly
-  // Or if showing yearly but no tiers have it, switch to lifetime
-  const effectiveIsLifetime = useMemo(() => {
-    if (isLifetime && !pricingOptions.hasLifetime) return false;
-    if (!isLifetime && !pricingOptions.hasYearly) return true;
-    return isLifetime;
-  }, [isLifetime, pricingOptions]);
+  // Count how many billing options are available
+  const availableOptions = useMemo(() => {
+    return [
+      pricingOptions.hasMonthly,
+      pricingOptions.hasYearly,
+      pricingOptions.hasLifetime,
+    ].filter(Boolean).length;
+  }, [pricingOptions]);
+
+  // Auto-select the first available billing period if current one isn't available
+  useEffect(() => {
+    // Don't try to switch if no options are available (prevents infinite loop)
+    if (!pricingOptions.hasMonthly && !pricingOptions.hasYearly && !pricingOptions.hasLifetime) {
+      return;
+    }
+
+    if (billingPeriod === "monthly" && !pricingOptions.hasMonthly) {
+      setBillingPeriod(pricingOptions.hasYearly ? "yearly" : "lifetime");
+    } else if (billingPeriod === "yearly" && !pricingOptions.hasYearly) {
+      setBillingPeriod(pricingOptions.hasMonthly ? "monthly" : "lifetime");
+    } else if (billingPeriod === "lifetime" && !pricingOptions.hasLifetime) {
+      setBillingPeriod(pricingOptions.hasYearly ? "yearly" : "monthly");
+    }
+  }, [billingPeriod, pricingOptions]);
 
   const handleCheckout = async (tierId: string) => {
     if (!isLoggedIn) {
@@ -65,7 +83,7 @@ export function PricingCards({ tiers, currentTierId, isLoggedIn }: PricingCardsP
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tier_id: tierId,
-          price_type: effectiveIsLifetime ? "lifetime" : "yearly",
+          price_type: billingPeriod,
           promo_code: promoCode.trim() || undefined,
         }),
       });
@@ -94,27 +112,42 @@ export function PricingCards({ tiers, currentTierId, isLoggedIn }: PricingCardsP
   const getPrice = (tier: AccessTierForPricing): string => {
     if (tier.slug === "free") return "$0";
 
-    if (effectiveIsLifetime) {
-      return tier.stripe_lifetime_price?.formatted || "N/A";
-    } else {
-      return tier.stripe_yearly_price?.formatted || "N/A";
+    switch (billingPeriod) {
+      case "monthly":
+        return tier.stripe_monthly_price?.formatted || "N/A";
+      case "yearly":
+        return tier.stripe_yearly_price?.formatted || "N/A";
+      case "lifetime":
+        return tier.stripe_lifetime_price?.formatted || "N/A";
     }
   };
 
   // Get price label
   const getPriceLabel = (tier: AccessTierForPricing): string => {
     if (tier.slug === "free") return "forever";
-    if (effectiveIsLifetime) {
-      return tier.stripe_lifetime_price ? "one-time" : "";
+
+    switch (billingPeriod) {
+      case "monthly":
+        return tier.stripe_monthly_price ? "/month" : "";
+      case "yearly":
+        return tier.stripe_yearly_price ? "/year" : "";
+      case "lifetime":
+        return tier.stripe_lifetime_price ? "one-time" : "";
     }
-    return tier.stripe_yearly_price ? "/year" : "";
   };
 
   // Check if tier has valid price for current mode
   const hasPriceForMode = (tier: AccessTierForPricing): boolean => {
     if (tier.slug === "free") return true;
-    if (effectiveIsLifetime) return !!tier.stripe_lifetime_price;
-    return !!tier.stripe_yearly_price;
+
+    switch (billingPeriod) {
+      case "monthly":
+        return !!tier.stripe_monthly_price;
+      case "yearly":
+        return !!tier.stripe_yearly_price;
+      case "lifetime":
+        return !!tier.stripe_lifetime_price;
+    }
   };
 
   const getTierIcon = (slug: string) => {
@@ -188,34 +221,62 @@ export function PricingCards({ tiers, currentTierId, isLoggedIn }: PricingCardsP
     return tier.cta_text || `Get ${tier.name}`;
   };
 
-  // Only show toggle if both options are available
-  const showPricingToggle = pricingOptions.hasYearly && pricingOptions.hasLifetime;
-
   return (
     <div className="space-y-8">
-      {/* Pricing Toggle - only show if both options exist */}
-      {showPricingToggle && (
-        <div className="flex items-center justify-center gap-4">
-          <Label htmlFor="pricing-toggle" className={!effectiveIsLifetime ? "font-semibold" : ""}>
-            Yearly
-          </Label>
-          <Switch
-            id="pricing-toggle"
-            checked={effectiveIsLifetime}
-            onCheckedChange={setIsLifetime}
-          />
-          <Label htmlFor="pricing-toggle" className={effectiveIsLifetime ? "font-semibold" : ""}>
-            Lifetime
-            <Badge variant="secondary" className="ml-2">Best Value</Badge>
-          </Label>
+      {/* Billing Period Selector - only show if multiple options exist */}
+      {availableOptions > 1 && (
+        <div className="flex items-center justify-center">
+          <div className="inline-flex rounded-lg border bg-muted p-1">
+            {pricingOptions.hasMonthly && (
+              <button
+                onClick={() => setBillingPeriod("monthly")}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  billingPeriod === "monthly"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Monthly
+              </button>
+            )}
+            {pricingOptions.hasYearly && (
+              <button
+                onClick={() => setBillingPeriod("yearly")}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  billingPeriod === "yearly"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Yearly
+                {pricingOptions.hasMonthly && (
+                  <Badge variant="secondary" className="ml-2 text-xs">Save 20%</Badge>
+                )}
+              </button>
+            )}
+            {pricingOptions.hasLifetime && (
+              <button
+                onClick={() => setBillingPeriod("lifetime")}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  billingPeriod === "lifetime"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Lifetime
+                <Badge variant="secondary" className="ml-2 text-xs">Best Value</Badge>
+              </button>
+            )}
+          </div>
         </div>
       )}
 
       {/* Single option label if only one type available */}
-      {!showPricingToggle && (pricingOptions.hasYearly || pricingOptions.hasLifetime) && (
+      {availableOptions === 1 && (
         <div className="flex items-center justify-center">
           <Badge variant="outline" className="text-base px-4 py-1">
-            {pricingOptions.hasLifetime ? "Lifetime Access" : "Annual Subscription"}
+            {pricingOptions.hasLifetime ? "Lifetime Access" :
+             pricingOptions.hasYearly ? "Annual Subscription" : "Monthly Subscription"}
           </Badge>
         </div>
       )}

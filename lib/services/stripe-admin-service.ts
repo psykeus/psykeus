@@ -45,6 +45,7 @@ export interface TierMapping {
   tierId: string;
   tierName: string;
   tierSlug: string;
+  stripePriceIdMonthly: string | null;
   stripePriceIdYearly: string | null;
   stripePriceIdLifetime: string | null;
 }
@@ -362,7 +363,7 @@ export async function getTierMappings(): Promise<TierMapping[]> {
   const { data, error } = await supabase
     .from("access_tiers")
     .select(
-      "id, name, slug, stripe_price_id_yearly, stripe_price_id_lifetime"
+      "id, name, slug, stripe_price_id_monthly, stripe_price_id_yearly, stripe_price_id_lifetime"
     )
     .eq("is_active", true)
     .order("sort_order", { ascending: true });
@@ -376,6 +377,7 @@ export async function getTierMappings(): Promise<TierMapping[]> {
     tierId: tier.id,
     tierName: tier.name,
     tierSlug: tier.slug,
+    stripePriceIdMonthly: tier.stripe_price_id_monthly,
     stripePriceIdYearly: tier.stripe_price_id_yearly,
     stripePriceIdLifetime: tier.stripe_price_id_lifetime,
   }));
@@ -387,6 +389,7 @@ export async function getTierMappings(): Promise<TierMapping[]> {
 export async function updateTierMappings(
   mappings: Array<{
     tierId: string;
+    stripePriceIdMonthly: string | null;
     stripePriceIdYearly: string | null;
     stripePriceIdLifetime: string | null;
   }>
@@ -397,6 +400,7 @@ export async function updateTierMappings(
     await supabase
       .from("access_tiers")
       .update({
+        stripe_price_id_monthly: mapping.stripePriceIdMonthly,
         stripe_price_id_yearly: mapping.stripePriceIdYearly,
         stripe_price_id_lifetime: mapping.stripePriceIdLifetime,
       })
@@ -420,4 +424,156 @@ export async function getStripeSecretKey(): Promise<string | null> {
 export async function getStripeWebhookSecret(): Promise<string | null> {
   const settings = await getStripeSettings();
   return settings.webhookSecret || process.env.STRIPE_WEBHOOK_SECRET || null;
+}
+
+// =============================================================================
+// Product Management Extensions
+// =============================================================================
+
+/**
+ * Archive a Stripe product (set active = false)
+ */
+export async function archiveStripeProduct(productId: string): Promise<void> {
+  const stripe = await getStripeClient();
+  if (!stripe) {
+    throw new Error("Stripe not configured");
+  }
+
+  await stripe.products.update(productId, { active: false });
+}
+
+/**
+ * Unarchive a Stripe product (set active = true)
+ */
+export async function unarchiveStripeProduct(productId: string): Promise<void> {
+  const stripe = await getStripeClient();
+  if (!stripe) {
+    throw new Error("Stripe not configured");
+  }
+
+  await stripe.products.update(productId, { active: true });
+}
+
+/**
+ * List all Stripe products, optionally including archived ones
+ */
+export async function listAllStripeProducts(
+  includeArchived = false
+): Promise<StripeProduct[]> {
+  const stripe = await getStripeClient();
+  if (!stripe) {
+    return [];
+  }
+
+  try {
+    // Fetch products - if including archived, don't filter by active
+    const products = await stripe.products.list({
+      active: includeArchived ? undefined : true,
+      limit: 100,
+    });
+
+    // Fetch all prices (both active and inactive if including archived)
+    const prices = await stripe.prices.list({
+      active: includeArchived ? undefined : true,
+      limit: 100,
+    });
+
+    // Group prices by product
+    const pricesByProduct: Record<string, StripePrice[]> = {};
+    prices.data.forEach((price) => {
+      const productId =
+        typeof price.product === "string" ? price.product : price.product.id;
+
+      if (!pricesByProduct[productId]) {
+        pricesByProduct[productId] = [];
+      }
+
+      pricesByProduct[productId].push({
+        id: price.id,
+        productId,
+        nickname: price.nickname,
+        unitAmount: price.unit_amount,
+        currency: price.currency,
+        type: price.type,
+        interval: price.recurring?.interval,
+        active: price.active,
+      });
+    });
+
+    // Build product list with prices
+    return products.data.map((product) => ({
+      id: product.id,
+      name: product.name,
+      description: product.description,
+      active: product.active,
+      prices: pricesByProduct[product.id] || [],
+    }));
+  } catch (error) {
+    console.error("[StripeAdmin] Error listing all products:", error);
+    return [];
+  }
+}
+
+// =============================================================================
+// Price Management Extensions
+// =============================================================================
+
+/**
+ * Deactivate a Stripe price (set active = false)
+ * Note: Prices cannot be deleted in Stripe, only deactivated
+ */
+export async function deactivateStripePrice(priceId: string): Promise<void> {
+  const stripe = await getStripeClient();
+  if (!stripe) {
+    throw new Error("Stripe not configured");
+  }
+
+  await stripe.prices.update(priceId, { active: false });
+}
+
+/**
+ * Reactivate a Stripe price (set active = true)
+ */
+export async function reactivateStripePrice(priceId: string): Promise<void> {
+  const stripe = await getStripeClient();
+  if (!stripe) {
+    throw new Error("Stripe not configured");
+  }
+
+  await stripe.prices.update(priceId, { active: true });
+}
+
+/**
+ * List all prices for a product, optionally including inactive ones
+ */
+export async function listProductPrices(
+  productId: string,
+  includeInactive = false
+): Promise<StripePrice[]> {
+  const stripe = await getStripeClient();
+  if (!stripe) {
+    return [];
+  }
+
+  try {
+    const prices = await stripe.prices.list({
+      product: productId,
+      active: includeInactive ? undefined : true,
+      limit: 100,
+    });
+
+    return prices.data.map((price) => ({
+      id: price.id,
+      productId,
+      nickname: price.nickname,
+      unitAmount: price.unit_amount,
+      currency: price.currency,
+      type: price.type,
+      interval: price.recurring?.interval,
+      active: price.active,
+    }));
+  } catch (error) {
+    console.error("[StripeAdmin] Error listing product prices:", error);
+    return [];
+  }
 }

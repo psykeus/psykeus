@@ -32,6 +32,7 @@ interface TierMapping {
   tierId: string;
   tierName: string;
   tierSlug: string;
+  stripePriceIdMonthly: string | null;
   stripePriceIdYearly: string | null;
   stripePriceIdLifetime: string | null;
 }
@@ -65,6 +66,7 @@ export function StripeTierMapping() {
 
   // Local state for edits
   const [localMappings, setLocalMappings] = useState<Record<string, {
+    monthly: string | null;
     yearly: string | null;
     lifetime: string | null;
   }>>({});
@@ -85,9 +87,10 @@ export function StripeTierMapping() {
         setProducts(productsData.products || []);
 
         // Initialize local state
-        const local: Record<string, { yearly: string | null; lifetime: string | null }> = {};
+        const local: Record<string, { monthly: string | null; yearly: string | null; lifetime: string | null }> = {};
         tiersData.mappings?.forEach((m: TierMapping) => {
           local[m.tierId] = {
+            monthly: m.stripePriceIdMonthly,
             yearly: m.stripePriceIdYearly,
             lifetime: m.stripePriceIdLifetime,
           };
@@ -106,6 +109,12 @@ export function StripeTierMapping() {
   }, [fetchData]);
 
   // Get all prices organized by type
+  const monthlyPrices = products.flatMap((p) =>
+    p.prices
+      .filter((pr) => pr.type === "recurring" && pr.interval === "month")
+      .map((pr) => ({ ...pr, productName: p.name }))
+  );
+
   const yearlyPrices = products.flatMap((p) =>
     p.prices
       .filter((pr) => pr.type === "recurring" && pr.interval === "year")
@@ -128,7 +137,7 @@ export function StripeTierMapping() {
 
   const handleMappingChange = (
     tierId: string,
-    type: "yearly" | "lifetime",
+    type: "monthly" | "yearly" | "lifetime",
     priceId: string | null
   ) => {
     setLocalMappings((prev) => ({
@@ -149,6 +158,7 @@ export function StripeTierMapping() {
     try {
       const updates = Object.entries(localMappings).map(([tierId, prices]) => ({
         tierId,
+        stripePriceIdMonthly: prices.monthly,
         stripePriceIdYearly: prices.yearly,
         stripePriceIdLifetime: prices.lifetime,
       }));
@@ -246,6 +256,7 @@ export function StripeTierMapping() {
             <TableHeader>
               <TableRow>
                 <TableHead>Access Tier</TableHead>
+                <TableHead>Monthly Price</TableHead>
                 <TableHead>Yearly Price</TableHead>
                 <TableHead>Lifetime Price</TableHead>
                 <TableHead className="w-24">Status</TableHead>
@@ -253,12 +264,33 @@ export function StripeTierMapping() {
             </TableHeader>
             <TableBody>
               {paidTiers.map((tier) => {
-                const local = localMappings[tier.tierId] || { yearly: null, lifetime: null };
-                const isConfigured = local.yearly || local.lifetime;
+                const local = localMappings[tier.tierId] || { monthly: null, yearly: null, lifetime: null };
+                const isConfigured = local.monthly || local.yearly || local.lifetime;
 
                 return (
                   <TableRow key={tier.tierId}>
                     <TableCell className="font-medium">{tier.tierName}</TableCell>
+                    <TableCell>
+                      <Select
+                        value={local.monthly || "none"}
+                        onValueChange={(v) =>
+                          handleMappingChange(tier.tierId, "monthly", v === "none" ? null : v)
+                        }
+                      >
+                        <SelectTrigger className="w-[220px]">
+                          <SelectValue placeholder="Select monthly price" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">-- None --</SelectItem>
+                          {monthlyPrices.map((price) => (
+                            <SelectItem key={price.id} value={price.id}>
+                              {price.productName} - {formatPrice(price.unitAmount, price.currency)}/mo
+                              {price.nickname && ` (${price.nickname})`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
                     <TableCell>
                       <Select
                         value={local.yearly || "none"}
@@ -266,14 +298,14 @@ export function StripeTierMapping() {
                           handleMappingChange(tier.tierId, "yearly", v === "none" ? null : v)
                         }
                       >
-                        <SelectTrigger className="w-[250px]">
+                        <SelectTrigger className="w-[220px]">
                           <SelectValue placeholder="Select yearly price" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">-- None --</SelectItem>
                           {yearlyPrices.map((price) => (
                             <SelectItem key={price.id} value={price.id}>
-                              {price.productName} - {formatPrice(price.unitAmount, price.currency)}/year
+                              {price.productName} - {formatPrice(price.unitAmount, price.currency)}/yr
                               {price.nickname && ` (${price.nickname})`}
                             </SelectItem>
                           ))}

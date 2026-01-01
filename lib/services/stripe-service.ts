@@ -94,7 +94,7 @@ export async function createCheckoutSession(params: {
   email: string;
   name?: string | null;
   tierId: string;
-  priceType: "yearly" | "lifetime";
+  priceType: "monthly" | "yearly" | "lifetime";
   successUrl: string;
   cancelUrl: string;
   promoCode?: string;
@@ -106,7 +106,7 @@ export async function createCheckoutSession(params: {
   // Get the tier with Stripe price IDs
   const { data: tier, error: tierError } = await supabase
     .from("access_tiers")
-    .select("*, stripe_price_id_yearly, stripe_price_id_lifetime")
+    .select("*, stripe_price_id_monthly, stripe_price_id_yearly, stripe_price_id_lifetime")
     .eq("id", tierId)
     .single();
 
@@ -114,10 +114,15 @@ export async function createCheckoutSession(params: {
     throw new Error("Tier not found");
   }
 
-  const priceId =
-    priceType === "yearly"
-      ? tier.stripe_price_id_yearly
-      : tier.stripe_price_id_lifetime;
+  // Select the correct price ID based on price type
+  let priceId: string | null;
+  if (priceType === "monthly") {
+    priceId = tier.stripe_price_id_monthly;
+  } else if (priceType === "yearly") {
+    priceId = tier.stripe_price_id_yearly;
+  } else {
+    priceId = tier.stripe_price_id_lifetime;
+  }
 
   if (!priceId) {
     throw new Error(`No ${priceType} price configured for this tier`);
@@ -126,10 +131,13 @@ export async function createCheckoutSession(params: {
   // Get or create Stripe customer
   const customerId = await getOrCreateStripeCustomer(userId, email, name);
 
+  // Determine checkout mode: subscriptions for monthly/yearly, payment for lifetime
+  const isSubscription = priceType === "monthly" || priceType === "yearly";
+
   // Create checkout session
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     customer: customerId,
-    mode: priceType === "yearly" ? "subscription" : "payment",
+    mode: isSubscription ? "subscription" : "payment",
     line_items: [
       {
         price: priceId,
@@ -162,14 +170,8 @@ export async function createCheckoutSession(params: {
 
       const promotionCode = promoCodes.data[0];
 
-      // Apply the discount
-      if (priceType === "yearly") {
-        // For subscriptions, use discounts
-        sessionParams.discounts = [{ promotion_code: promotionCode.id }];
-      } else {
-        // For one-time payments, use discounts as well
-        sessionParams.discounts = [{ promotion_code: promotionCode.id }];
-      }
+      // Apply the discount (works for both subscriptions and one-time payments)
+      sessionParams.discounts = [{ promotion_code: promotionCode.id }];
     } catch (error) {
       if (error instanceof Error && error.message.startsWith("Invalid promo code")) {
         throw error;
@@ -415,7 +417,57 @@ export async function handleCheckoutCompleted(
 
   await supabase.from("users").update(updateData).eq("id", userId);
 
-  // Record payment in history
+  // Extract discount/coupon information
+  let couponCode: string | null = null;
+  let couponId: string | null = null;
+  let discountAmountCents = 0;
+  let discountPercentage: number | null = null;
+
+  // Get discount amount from session
+  if (session.total_details?.amount_discount) {
+    discountAmountCents = session.total_details.amount_discount;
+  }
+
+  // If there's a discount, fetch the promo code details
+  if (session.discounts && session.discounts.length > 0) {
+    try {
+      const stripe = await getStripe();
+      const discountObj = session.discounts[0];
+
+      // discountObj can have either coupon or promotion_code
+      if (discountObj.promotion_code) {
+        const promoCodeId = typeof discountObj.promotion_code === "string"
+          ? discountObj.promotion_code
+          : discountObj.promotion_code;
+
+        const promoCode = await stripe.promotionCodes.retrieve(promoCodeId as string);
+        couponCode = promoCode.code;
+        couponId = typeof promoCode.promotion.coupon === "string"
+          ? promoCode.promotion.coupon
+          : promoCode.promotion.coupon?.id ?? null;
+
+        // Get coupon details for percentage
+        const coupon = typeof promoCode.promotion.coupon === "string"
+          ? await stripe.coupons.retrieve(promoCode.promotion.coupon)
+          : promoCode.promotion.coupon;
+
+        discountPercentage = coupon?.percent_off || null;
+      } else if (discountObj.coupon) {
+        // Direct coupon without promo code
+        couponId = typeof discountObj.coupon === "string"
+          ? discountObj.coupon
+          : (discountObj.coupon as unknown as { id: string }).id;
+
+        const coupon = await stripe.coupons.retrieve(couponId as string);
+        discountPercentage = coupon.percent_off || null;
+      }
+    } catch (error) {
+      console.error("[StripeService] Error fetching discount details:", error);
+      // Continue without discount details - payment still succeeded
+    }
+  }
+
+  // Record payment in history with discount info
   await supabase.from("payment_history").insert({
     user_id: userId,
     stripe_checkout_session_id: session.id,
@@ -428,6 +480,10 @@ export async function handleCheckoutCompleted(
     payment_type: paymentType,
     tier_id: tierId,
     status: "succeeded",
+    coupon_code: couponCode,
+    coupon_id: couponId,
+    discount_amount_cents: discountAmountCents,
+    discount_percentage: discountPercentage,
     metadata: {
       price_type: priceType,
       customer_email: session.customer_details?.email,
@@ -439,7 +495,7 @@ export async function handleCheckoutCompleted(
     user_id: userId,
     tier_id: tierId,
     action: "purchase",
-    reason: `${priceType} purchase via Stripe`,
+    reason: `${priceType} purchase via Stripe${couponCode ? ` with code ${couponCode}` : ""}`,
     starts_at: new Date().toISOString(),
     expires_at: periodEnd,
   });
@@ -671,12 +727,12 @@ export async function getAccessTiersWithPricing(): Promise<AccessTierWithStripe[
 export async function getAccessTiersForPricing(): Promise<AccessTierFull[]> {
   const supabase = createServiceClient();
 
+  // Use * to get all columns - the new columns will be included if migration has been applied
+  // Don't explicitly list new columns to avoid errors before migration
   const { data, error } = await supabase
     .from("access_tiers")
     .select(`
       *,
-      stripe_price_id_yearly,
-      stripe_price_id_lifetime,
       tier_features(*)
     `)
     .eq("is_active", true)
@@ -689,8 +745,17 @@ export async function getAccessTiersForPricing(): Promise<AccessTierFull[]> {
   }
 
   // Sort features and map to expected structure
+  // Use defaults for visibility flags if columns don't exist yet (pre-migration)
   return (data || []).map((tier) => ({
     ...tier,
+    // Ensure price IDs default to null if not set
+    stripe_price_id_monthly: tier.stripe_price_id_monthly ?? null,
+    stripe_price_id_yearly: tier.stripe_price_id_yearly ?? null,
+    stripe_price_id_lifetime: tier.stripe_price_id_lifetime ?? null,
+    // Ensure visibility flags default to true if not set (backwards compatible)
+    show_monthly_plan: tier.show_monthly_plan ?? true,
+    show_annual_plan: tier.show_annual_plan ?? true,
+    show_lifetime_plan: tier.show_lifetime_plan ?? true,
     features: ((tier.tier_features as TierFeature[]) || [])
       .filter((f) => f.is_active)
       .sort((a, b) => a.sort_order - b.sort_order),
@@ -735,16 +800,24 @@ async function fetchStripePrice(priceId: string): Promise<StripePriceInfo | null
 /**
  * Get access tiers with live Stripe pricing data
  * This fetches actual prices from Stripe to ensure pricing page is accurate
+ * Prices are filtered based on visibility flags (show_monthly_plan, show_annual_plan, show_lifetime_plan)
  */
 export async function getAccessTiersWithLivePricing(): Promise<AccessTierForPricing[]> {
   // First get tiers with features from database
   const tiers = await getAccessTiersForPricing();
 
-  // Collect all price IDs that need to be fetched
+  // Collect all price IDs that need to be fetched (only for visible plans)
   const priceIds: string[] = [];
   tiers.forEach((tier) => {
-    if (tier.stripe_price_id_yearly) priceIds.push(tier.stripe_price_id_yearly);
-    if (tier.stripe_price_id_lifetime) priceIds.push(tier.stripe_price_id_lifetime);
+    if (tier.stripe_price_id_monthly && tier.show_monthly_plan) {
+      priceIds.push(tier.stripe_price_id_monthly);
+    }
+    if (tier.stripe_price_id_yearly && tier.show_annual_plan) {
+      priceIds.push(tier.stripe_price_id_yearly);
+    }
+    if (tier.stripe_price_id_lifetime && tier.show_lifetime_plan) {
+      priceIds.push(tier.stripe_price_id_lifetime);
+    }
   });
 
   // Fetch all prices in parallel
@@ -760,13 +833,17 @@ export async function getAccessTiersWithLivePricing(): Promise<AccessTierForPric
     }
   });
 
-  // Attach live pricing to tiers
+  // Attach live pricing to tiers, respecting visibility flags
   return tiers.map((tier) => ({
     ...tier,
-    stripe_yearly_price: tier.stripe_price_id_yearly
+    // Only include prices if the plan is visible
+    stripe_monthly_price: (tier.show_monthly_plan && tier.stripe_price_id_monthly)
+      ? priceMap.get(tier.stripe_price_id_monthly) || null
+      : null,
+    stripe_yearly_price: (tier.show_annual_plan && tier.stripe_price_id_yearly)
       ? priceMap.get(tier.stripe_price_id_yearly) || null
       : null,
-    stripe_lifetime_price: tier.stripe_price_id_lifetime
+    stripe_lifetime_price: (tier.show_lifetime_plan && tier.stripe_price_id_lifetime)
       ? priceMap.get(tier.stripe_price_id_lifetime) || null
       : null,
   }));

@@ -16,9 +16,8 @@ function createFile(
   return {
     path,
     filename,
-    size: 1000,
-    extension: filename.split(".").pop() || "",
-    folder: parts.join("/") || "/",
+    file_type: filename.split(".").pop() || "",
+    size_bytes: 1000,
     ...overrides,
   };
 }

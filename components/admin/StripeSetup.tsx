@@ -10,12 +10,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StripeConnectionForm } from "./StripeConnectionForm";
 import { StripeProductsList } from "./StripeProductsList";
 import { StripeTierMapping } from "./StripeTierMapping";
-import { Settings, Package, Link } from "lucide-react";
+import { StripeCouponManager } from "./StripeCouponManager";
+import { StripeAnalyticsDashboard } from "./StripeAnalyticsDashboard";
+import { Settings, Package, Link, Ticket, BarChart3 } from "lucide-react";
 
 export function StripeSetup() {
   return (
     <Tabs defaultValue="connection" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+      <TabsList className="grid w-full grid-cols-5 lg:w-[600px]">
         <TabsTrigger value="connection" className="gap-2">
           <Settings className="h-4 w-4" />
           <span className="hidden sm:inline">Connection</span>
@@ -26,7 +28,15 @@ export function StripeSetup() {
         </TabsTrigger>
         <TabsTrigger value="mapping" className="gap-2">
           <Link className="h-4 w-4" />
-          <span className="hidden sm:inline">Tier Mapping</span>
+          <span className="hidden sm:inline">Tiers</span>
+        </TabsTrigger>
+        <TabsTrigger value="coupons" className="gap-2">
+          <Ticket className="h-4 w-4" />
+          <span className="hidden sm:inline">Coupons</span>
+        </TabsTrigger>
+        <TabsTrigger value="analytics" className="gap-2">
+          <BarChart3 className="h-4 w-4" />
+          <span className="hidden sm:inline">Analytics</span>
         </TabsTrigger>
       </TabsList>
 
@@ -40,6 +50,14 @@ export function StripeSetup() {
 
       <TabsContent value="mapping">
         <StripeTierMapping />
+      </TabsContent>
+
+      <TabsContent value="coupons">
+        <StripeCouponManager />
+      </TabsContent>
+
+      <TabsContent value="analytics">
+        <StripeAnalyticsDashboard />
       </TabsContent>
     </Tabs>
   );

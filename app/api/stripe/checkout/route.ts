@@ -15,8 +15,8 @@ export const runtime = "nodejs";
 // Validation schema for checkout request
 const checkoutSchema = z.object({
   tier_id: z.string().uuid("Invalid tier ID"),
-  price_type: z.enum(["yearly", "lifetime"], {
-    message: "price_type must be 'yearly' or 'lifetime'",
+  price_type: z.enum(["monthly", "yearly", "lifetime"], {
+    message: "price_type must be 'monthly', 'yearly', or 'lifetime'",
   }),
   success_url: z.string().url("Invalid success URL").optional(),
   cancel_url: z.string().url("Invalid cancel URL").optional(),

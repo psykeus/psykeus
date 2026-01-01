@@ -60,6 +60,7 @@ export interface AccessTier {
   price_monthly: number | null;
   price_yearly: number | null;
   price_lifetime: number | null;
+  price_monthly_display: string | null;
   price_yearly_display: string | null;
   price_lifetime_display: string | null;
   sort_order: number;
@@ -407,6 +408,7 @@ export interface StripeWebhookEvent {
 }
 
 export interface AccessTierWithStripe extends AccessTier {
+  stripe_price_id_monthly: string | null;
   stripe_price_id_yearly: string | null;
   stripe_price_id_lifetime: string | null;
 }
@@ -426,6 +428,7 @@ export interface StripePriceInfo {
  * Access tier with live Stripe pricing data
  */
 export interface AccessTierWithLivePricing extends AccessTierWithStripe {
+  stripe_monthly_price?: StripePriceInfo | null;
   stripe_yearly_price?: StripePriceInfo | null;
   stripe_lifetime_price?: StripePriceInfo | null;
 }
@@ -454,6 +457,9 @@ export interface TierFeature {
  */
 export interface AccessTierFull extends AccessTierWithStripe {
   show_on_pricing: boolean;
+  show_monthly_plan: boolean;
+  show_annual_plan: boolean;
+  show_lifetime_plan: boolean;
   highlight_label: string | null;
   cta_text: string;
   features?: TierFeature[];
@@ -463,6 +469,7 @@ export interface AccessTierFull extends AccessTierWithStripe {
  * Access tier with live Stripe pricing for pricing page
  */
 export interface AccessTierForPricing extends AccessTierFull {
+  stripe_monthly_price?: StripePriceInfo | null;
   stripe_yearly_price?: StripePriceInfo | null;
   stripe_lifetime_price?: StripePriceInfo | null;
 }
@@ -492,11 +499,15 @@ export interface CreateTierRequest {
   price_monthly: number | null;
   price_yearly: number | null;
   price_lifetime: number | null;
+  price_monthly_display: string | null;
   price_yearly_display: string | null;
   price_lifetime_display: string | null;
   sort_order: number;
   is_active: boolean;
   show_on_pricing: boolean;
+  show_monthly_plan: boolean;
+  show_annual_plan: boolean;
+  show_lifetime_plan: boolean;
   highlight_label: string | null;
   cta_text: string;
 }
@@ -546,4 +557,184 @@ export interface TierStats {
  */
 export interface FeatureIdRouteParams {
   params: Promise<{ featureId: string }>;
+}
+
+// =============================================================================
+// Stripe Coupon & Promo Code Types
+// =============================================================================
+
+export type CouponDuration = "forever" | "once" | "repeating";
+
+/**
+ * Stripe coupon with associated promo codes
+ */
+export interface StripeCoupon {
+  id: string;
+  name: string | null;
+  percentOff: number | null;
+  amountOff: number | null;
+  currency: string | null;
+  duration: CouponDuration;
+  durationInMonths: number | null;
+  maxRedemptions: number | null;
+  timesRedeemed: number;
+  redeemBy: string | null; // ISO date string
+  valid: boolean;
+  created: string; // ISO date string
+  metadata: Record<string, string>;
+  promoCodes?: StripePromoCode[];
+}
+
+/**
+ * Stripe promotion code (user-facing code like "SAVE20")
+ */
+export interface StripePromoCode {
+  id: string;
+  code: string;
+  couponId: string;
+  active: boolean;
+  maxRedemptions: number | null;
+  timesRedeemed: number;
+  expiresAt: string | null; // ISO date string
+  firstTimeTransaction: boolean;
+  minimumAmount: number | null;
+  minimumAmountCurrency: string | null;
+  created: string; // ISO date string
+  metadata: Record<string, string>;
+}
+
+/**
+ * Request payload for creating a coupon
+ */
+export interface CreateCouponRequest {
+  name: string;
+  percentOff?: number;
+  amountOff?: number;
+  currency?: string;
+  duration: CouponDuration;
+  durationInMonths?: number;
+  maxRedemptions?: number;
+  redeemBy?: string; // ISO date string
+  metadata?: Record<string, string>;
+}
+
+/**
+ * Request payload for updating a coupon (limited by Stripe - can't change discount)
+ */
+export interface UpdateCouponRequest {
+  name?: string;
+  metadata?: Record<string, string>;
+}
+
+/**
+ * Request payload for creating a promo code
+ */
+export interface CreatePromoCodeRequest {
+  couponId: string;
+  code: string;
+  maxRedemptions?: number;
+  expiresAt?: string; // ISO date string
+  firstTimeTransaction?: boolean;
+  minimumAmount?: number;
+  minimumAmountCurrency?: string;
+  restrictions?: {
+    firstTimeTransaction?: boolean;
+    minimumAmount?: number;
+    minimumAmountCurrency?: string;
+  };
+  metadata?: Record<string, string>;
+}
+
+/**
+ * Request payload for updating a promo code
+ */
+export interface UpdatePromoCodeRequest {
+  active?: boolean;
+  metadata?: Record<string, string>;
+}
+
+// =============================================================================
+// Stripe Analytics Types
+// =============================================================================
+
+/**
+ * Individual coupon usage stats
+ */
+export interface CouponUsageStats {
+  couponId: string;
+  couponName: string | null;
+  redemptions: number;
+  totalDiscount: number; // in cents
+}
+
+/**
+ * Individual promo code usage stats
+ */
+export interface PromoCodeUsageStats {
+  code: string;
+  couponId: string;
+  redemptions: number;
+  totalDiscount: number; // in cents
+}
+
+/**
+ * Time-series data point for analytics
+ */
+export interface AnalyticsDataPoint {
+  date: string; // ISO date string
+  redemptions: number;
+  discountAmount: number; // in cents
+}
+
+/**
+ * Comprehensive coupon analytics
+ */
+export interface CouponAnalytics {
+  totalRedemptions: number;
+  totalDiscountGiven: number; // in cents
+  topCoupons: CouponUsageStats[];
+  topPromoCodes: PromoCodeUsageStats[];
+  redemptionsByPeriod: AnalyticsDataPoint[];
+}
+
+/**
+ * Revenue breakdown by tier
+ */
+export interface TierRevenueStats {
+  tierId: string;
+  tierName: string;
+  revenue: number; // in cents
+  subscriptionCount: number;
+  lifetimeCount: number;
+}
+
+/**
+ * Time-series revenue data
+ */
+export interface RevenueDataPoint {
+  date: string; // ISO date string
+  revenue: number; // in cents
+  discounts: number; // in cents
+}
+
+/**
+ * Comprehensive revenue analytics
+ */
+export interface RevenueAnalytics {
+  totalRevenue: number; // in cents
+  totalDiscounts: number; // in cents
+  netRevenue: number; // in cents
+  byTier: TierRevenueStats[];
+  byPeriod: RevenueDataPoint[];
+}
+
+/**
+ * Expiring coupon or promo code alert
+ */
+export interface ExpiringItem {
+  type: "coupon" | "promo_code";
+  id: string;
+  name: string;
+  expiresAt: string; // ISO date string
+  daysUntilExpiry: number;
 }

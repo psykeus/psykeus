@@ -63,11 +63,15 @@ function TierForm({ tier, onClose, onSave, saving }: TierFormProps) {
     price_monthly: tier?.price_monthly ?? null,
     price_yearly: tier?.price_yearly ?? null,
     price_lifetime: tier?.price_lifetime ?? null,
+    price_monthly_display: tier?.price_monthly_display || "",
     price_yearly_display: tier?.price_yearly_display || "",
     price_lifetime_display: tier?.price_lifetime_display || "",
     sort_order: tier?.sort_order ?? 0,
     is_active: tier?.is_active ?? true,
     show_on_pricing: tier?.show_on_pricing ?? true,
+    show_monthly_plan: tier?.show_monthly_plan ?? true,
+    show_annual_plan: tier?.show_annual_plan ?? true,
+    show_lifetime_plan: tier?.show_lifetime_plan ?? true,
     highlight_label: tier?.highlight_label || "",
     cta_text: tier?.cta_text || "Get Started",
   });
@@ -305,7 +309,28 @@ function TierForm({ tier, onClose, onSave, saving }: TierFormProps) {
             <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
               Pricing
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Monthly Price ($)
+                </label>
+                <input
+                  type="number"
+                  value={formData.price_monthly ?? ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      price_monthly: e.target.value
+                        ? parseFloat(e.target.value)
+                        : null,
+                    })
+                  }
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  placeholder="0.00"
+                  min={0}
+                  step="0.01"
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Yearly Price ($)
@@ -349,7 +374,24 @@ function TierForm({ tier, onClose, onSave, saving }: TierFormProps) {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 mt-4">
+            <div className="grid grid-cols-3 gap-4 mt-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Monthly Display Text
+                </label>
+                <input
+                  type="text"
+                  value={formData.price_monthly_display || ""}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      price_monthly_display: e.target.value || null,
+                    })
+                  }
+                  className="w-full px-3 py-2 border rounded-md bg-background"
+                  placeholder="e.g., $9.99/month"
+                />
+              </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Yearly Display Text
@@ -364,11 +406,8 @@ function TierForm({ tier, onClose, onSave, saving }: TierFormProps) {
                     })
                   }
                   className="w-full px-3 py-2 border rounded-md bg-background"
-                  placeholder="e.g., $99/year or Included in Lifetime"
+                  placeholder="e.g., $99/year"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Custom text shown on pricing page for yearly option
-                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">
@@ -384,12 +423,66 @@ function TierForm({ tier, onClose, onSave, saving }: TierFormProps) {
                     })
                   }
                   className="w-full px-3 py-2 border rounded-md bg-background"
-                  placeholder="e.g., $299 or One-time payment"
+                  placeholder="e.g., $299 one-time"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Custom text shown on pricing page for lifetime option
-                </p>
               </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Custom text overrides the Stripe price on the pricing page
+            </p>
+          </div>
+
+          {/* Plan Visibility */}
+          <div className="space-y-4">
+            <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
+              Plan Visibility
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Control which billing options are shown on the pricing page for this tier
+            </p>
+            <div className="grid grid-cols-3 gap-4">
+              <label className="flex items-center gap-2 cursor-pointer p-3 border rounded-md hover:bg-secondary/50">
+                <input
+                  type="checkbox"
+                  checked={formData.show_monthly_plan}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      show_monthly_plan: e.target.checked,
+                    })
+                  }
+                  className="rounded"
+                />
+                <span className="text-sm font-medium">Show Monthly</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer p-3 border rounded-md hover:bg-secondary/50">
+                <input
+                  type="checkbox"
+                  checked={formData.show_annual_plan}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      show_annual_plan: e.target.checked,
+                    })
+                  }
+                  className="rounded"
+                />
+                <span className="text-sm font-medium">Show Annual</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer p-3 border rounded-md hover:bg-secondary/50">
+                <input
+                  type="checkbox"
+                  checked={formData.show_lifetime_plan}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      show_lifetime_plan: e.target.checked,
+                    })
+                  }
+                  className="rounded"
+                />
+                <span className="text-sm font-medium">Show Lifetime</span>
+              </label>
             </div>
           </div>
 
